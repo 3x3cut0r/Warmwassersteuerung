@@ -1,0 +1,46 @@
+body {
+    display: block;
+    margin: 20px;
+    background-color: white;
+}
+
+.lcd-display {
+    background-color: lime;
+    color: black;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    height: 85px;
+    width: 192px;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.button {
+    width: 120px;
+}
+
+.highlighted {
+    border: 2px solid black;
+    font-weight: bold;
+}
+
+.lcd-line {
+    margin: 3px 0;
+}
+
+table {
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+td {
+    padding-right: 10px;
+}
+
+input {
+    width: 92px;
+}
+
+select {
+    width: 100px;
+}
