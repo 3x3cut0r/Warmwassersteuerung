@@ -5,18 +5,13 @@
 # Components:
 #   - 4 line LCD
 #   - 2 Relays
-#   - 2 Buttons
+#   - 2 Buttons (optional)
 #   - 1 DS18B20 I2C temperature sensor
 #
-#   Copyright (C) 2023, 3x3cut0r
+#   Copyright (C) 2024, 3x3cut0r
 #
 #   Published under the MIT license.
-
-# ==================================================
-# imports
-# ==================================================
-
-# micro python imports
+#
 import gc  # https://docs.micropython.org/en/latest/library/gc.html
 import time  # https://docs.micropython.org/en/latest/library/time.html
 import uasyncio as asyncio  # https://docs.micropython.org/en/latest/library/asyncio.html
@@ -24,20 +19,22 @@ from machine import (
     reset,
 )  # https://docs.micropython.org/en/latest/library/machine.html#machine.reset
 
-# custom imports
-from src.log import log
-from src.config import config
-from src.lcd import init_lcd
-from src.led import init_led
-from src.relay import init_relays
-from src.webserver import run_webserver
+from webserver import webserver
+from utils.log import log  # logging function
+from utils.log_level import log_level
+from src.config import config  # Config() instance
+from src.lcd import lcd  # LCD() instance
+from src.led import led  # LED() instance
+from src.relay import relay_open, relay_close
+from src.temp import temp_sensor, temp_sensor_2
+
+# from src.button import button, button_2
 from src.functions import (
     categorize_temp_change,
     adjust_relay_time_based_on_temp_category,
     adjust_update_time_based_on_temp_category,
     update_temp,
     print_nominal_temp,
-    set_relay,
     open_relays,
     # check_buttons,
     update_timer,
@@ -47,173 +44,206 @@ from src.functions import (
 
 async def main():
     try:
-        log("INFO", "main()")
+        print("INFO: --------------------------")
+        print("INFO: Main()")
+        print("INFO: --------------------------")
 
-        # ========================================
-        # setup
-        # ========================================
-        log("INFO", "--------------------------")
-        log("INFO", "main setup()")
-        log("INFO", "--------------------------")
+        # Initialize LogLevel
+        level = await config.get("log_level", "OFF")
+        log_level.initialize(level)
 
-        # init led
-        init_led()
+        # Initialize LED
+        await led.initialize()
 
-        # init lcd
-        init_lcd()
+        # Initialize LCD
+        await lcd.initialize()
 
-        # init relays
-        init_relays()
+        # Initialize relays
+        open_relay_pin = await config.get_int("RELAY_OPEN_PIN")
+        close_relay_pin = await config.get_int("RELAY_CLOSE_PIN")
+        await relay_open.initialize(open_relay_pin)
+        await relay_close.initialize(close_relay_pin)
 
-        # update temp
-        await update_temp()
-        await update_temp(2)
-        config.set_value(
-            "temp_last_measurement", config.get_float_value("current_temp", -127.0)
+        # Initialize temp sensor 1
+        temp_sensor_pin = await config.get_int("TEMP_SENSOR_PIN")
+        temp_sensor_type = await config.get("TEMP_SENSOR_TYPE")
+        temp_sensor_resolution = await config.get_int("TEMP_SENSOR_RESOLUTION_BIT")
+        await temp_sensor.initialize(
+            temp_sensor_pin,
+            resolution=temp_sensor_resolution,
+            type=temp_sensor_type,
         )
 
-        # print nominal temp
-        print_nominal_temp()
+        # Initialize temp sensor 2
+        temp_sensor_2_pin = await config.get_int("TEMP_SENSOR_2_PIN")
+        temp_sensor_2_type = await config.get("TEMP_SENSOR_2_TYPE")
+        temp_sensor_resolution = await config.get_int("TEMP_SENSOR_2_RESOLUTION_BIT")
+        await temp_sensor_2.initialize(
+            temp_sensor_2_pin,
+            resolution=temp_sensor_resolution,
+            type=temp_sensor_2_type,
+        )
 
-        if config.get_bool_value("boot_normal", True):
+        # Initialize buttons
+        # button_pin = await config.get_int("BUTTON_TEMP_UP_PIN")
+        # button_2_pin = await config.get_int("BUTTON_TEMP_DOWN_PIN")
+        # await button.initialize(button_pin)
+        # await button_2.initialize(button_2_pin)
 
-            # wait start 1
-            await wait_start(config.get_int_value("delay_before_start_1"), "Start 1/2:")
+        # Update temp
+        await update_temp()
+        await update_temp(2)
+        temp_last_measurement = await config.get_float("current_temp", -127.0)
+        await config.set("temp_last_measurement", temp_last_measurement)
 
-            # open relay initial
-            await set_relay(
-                config.get_int_value("RELAY_OPEN_PIN", 14),
-                config.get_int_value("init_relay_time", 5000),
-            )
+        # Print nominal temp
+        await print_nominal_temp()
 
-            # wait start 2
-            await wait_start(config.get_int_value("delay_before_start_2"), "Start 2/2:")
+        if await config.get_bool("boot_normal", True):
 
-        # open relay
-        await open_relays(config.get_int_value("relay_time", 1800))
+            # Wait start 1
+            delay_before_start_1 = await config.get_int("delay_before_start_1")
+            log("INFO", f"Main.wait_start(1/2: {delay_before_start_1})")
+            await wait_start(delay_before_start_1, "Start 1/2:")
 
-        # set normal boot to True
-        config.set_value("boot_normal", 1)
+            # Open relay initial
+            init_relay_time = await config.get_int("init_relay_time")
+            await relay_open.toggle(init_relay_time)
 
-        # init time values
+            # Wait start 2
+            delay_before_start_2 = await config.get_int("delay_before_start_2")
+            log("INFO", f"Main.wait_start(2/2: {delay_before_start_2})")
+            await wait_start(delay_before_start_2, "Start 2/2:")
+
+        # Open relay
+        relay_time = await config.get_int("relay_time", 1800)
+        await open_relays(relay_time)
+
+        # Set normal boot to True
+        await config.set("boot_normal", 1)
+
+        # Init time values
         previous_millis = 0
-        interval = config.get_int_value("interval", 930)
-        update_time = config.get_int_value("update_time", 120)
-        temp_update_interval = config.get_int_value("temp_update_interval", 5)
+        interval = await config.get_int("interval", 930)
+        update_time = await config.get_int("update_time", 120)
+        temp_update_interval = await config.get_int("temp_update_interval", 5)
 
         # ==================================================
-        # main loop
+        # Main loop
         # ==================================================
         log("INFO", "--------------------------")
-        log("INFO", "main loop()")
+        log("INFO", "Main.loop()")
         log("INFO", "--------------------------")
 
         while True:
             current_millis = time.ticks_ms()
 
-            # adjust temp category
+            # Adjust temp category
             if time.ticks_diff(
-                current_millis, config.get_int_value("temp_last_measurement_time")
-            ) >= config.get_int_value("temp_sampling_interval"):
+                current_millis, await config.get_int("temp_last_measurement_time")
+            ) >= await config.get_int("temp_sampling_interval"):
 
-                # update temp
+                # Update temp
                 await update_temp()
-                temp_change = config.get_float_value(
+                # await update_temp(2)  # temp_sensor >= 2 not used for adjustments
+                temp_change = await config.get_float(
                     "current_temp", -127.0
-                ) - config.get_float_value("temp_last_measurement")
+                ) - await config.get_float("temp_last_measurement")
 
-                # categorize temp change
-                _ = categorize_temp_change(temp_change)
+                # Categorize temp change
+                _ = await categorize_temp_change(temp_change)
 
-                # update last measurement temp
-                config.set_value(
+                # Update last measurement temp
+                await config.set(
                     "temp_last_measurement",
-                    config.get_float_value("current_temp", -127.0),
+                    await config.get_float("current_temp", -127.0),
                 )
 
-                # update last measurement temp time
-                config.set_value("temp_last_measurement_time", current_millis)
+                # Update last measurement temp time
+                await config.set("temp_last_measurement_time", current_millis)
 
-                # release memory
+                # Release memory
+                log("VERBOSE", "Main.gc.collect()")
                 gc.collect()
 
-            # main
+            # Main
             if time.ticks_diff(current_millis, previous_millis) > interval:
 
                 if update_time > 0:
-                    # update timer
-                    update_timer(update_time)
+                    # Update timer
+                    await update_timer(update_time)
 
-                    # update temp on temp update interval
+                    # Update temp on temp update interval
                     if update_time % temp_update_interval == 0:
                         await update_temp()
                         await update_temp(2)
 
                     update_time -= 1
 
-                    # # check buttons
+                    # # Check buttons
                     # await check_buttons()
 
-                    # print mem alloc
-                    log("VERBOSE", "mem_alloc(): {} Bytes".format(gc.mem_alloc()))
+                    # Print mem alloc
+                    log(
+                        "VERBOSE",
+                        "Main.gc.mem_alloc(): {} Bytes".format(gc.mem_alloc()),
+                    )
 
                 else:
 
-                    # update temp
+                    # Update temp
                     await update_temp()
                     await update_temp(2)
 
-                    # set and adjust relay_time based on temp category
-                    relay_time = adjust_relay_time_based_on_temp_category()
+                    # Set and adjust relay_time based on temp category
+                    relay_time = await adjust_relay_time_based_on_temp_category()
 
-                    # set and adjust update_time based on temp category
-                    update_time = adjust_update_time_based_on_temp_category()
+                    # Set and adjust update_time based on temp category
+                    update_time = await adjust_update_time_based_on_temp_category()
 
-                    # open relays
+                    # Open relays
                     await open_relays(relay_time)
 
-                    # create config backup
-                    config.create_config_backup()
+                    # Print allocated memory
+                    log(
+                        "VERBOSE",
+                        "Main.gc.mem_alloc(): {} Bytes".format(gc.mem_alloc()),
+                    )
 
-                    # print allocated memory
-                    log("INFO", "gc.mem_alloc(): {} Bytes".format(gc.mem_alloc()))
-
-                # update previous millis
+                # Update previous millis
                 previous_millis = current_millis
-                config.set_value("previous_millis", previous_millis)
+                await config.set("previous_millis", previous_millis)
 
             await asyncio.sleep(0.1)
 
     except Exception as e:
 
-        # print error message
+        # Print error message
         message = f"ERROR: main.py: {str(e)}\n"
         print(message)
 
-        # set normal boot to False
-        config.set_value("boot_normal", 0)
-        config.save_config()
+        # Set normal boot to False
+        await config.set("boot_normal", 0)
+        await config.save()
 
-        # write error.log
+        # Write error.log
         with open("/error.log", "w", encoding="utf-8") as file:
             file.write(message)
 
-        # reset pico
+        # Reset pico
         reset()
 
 
 if __name__ == "__main__":
 
-    log("INFO", "__main__")
-
-    # create asyncio event loop
+    # Create asyncio event loop
     loop = asyncio.get_event_loop()
 
-    # run webserver() as task
-    loop.create_task(run_webserver())
+    # Run webserver() as task
+    loop.create_task(webserver())
 
-    # run main() as task
+    # Run main() as task
     loop.create_task(main())
 
-    # run event loop forever
+    # Run event loop forever
     loop.run_forever()

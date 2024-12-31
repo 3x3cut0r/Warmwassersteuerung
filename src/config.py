@@ -1,106 +1,105 @@
-# imports
 import ujson  # https://docs.micropython.org/en/latest/library/json.html
+from utils.log import log  # logging function
+from utils.get_bool import get_bool
+from utils.get_float import get_float
+from utils.get_int import get_int
+from src.rlock import Rlock  # re-entrant asyncio.Lock()
 
 
-# ==================================================
-# class Config
-# ==================================================
 class Config:
-    def __init__(self, file_name="config.json", file_name_backup="config_backup.json"):
-        self.root_path = "/"
-        self.file_name = self.root_path + file_name
-        self.file_name_backup = self.root_path + file_name_backup
-        self.config = {}
-        self.load_config()
-        self.reset_config()
+    """Manage the project configuration. (Singleton)"""
 
-    # file path
-    def file_path(self, backup=False):
-        return self.file_name_backup if backup else self.file_name
+    _instance = None
 
-    # load config
-    def load_config(self):
-        # try loading config.json
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Config, cls).__new__(cls)
+
+        return cls._instance
+
+    def __init__(self, file_name="config.json"):
+        if not hasattr(self, "initialized"):
+            self.root_path = "/"
+            self.file_name = file_name
+            self.file_path = self.root_path + self.file_name
+            self.config = {}
+            self.lock = Rlock()
+            self.load()
+            self.reset()
+            log("INFO", f"Config({self.file_path}): initialized")
+            self.initialized = True
+
+    def load(self):
+        """Load the configuration from file"""
         try:
-            with open(self.file_path(), "r", encoding="utf-8") as file:
+            log("INFO", f"Config.load({self.file_path})")
+            with open(self.file_path, "r", encoding="utf-8") as file:
                 self.config = ujson.load(file)
                 return self.config
         except OSError:
-            # try loading config_backup.json
-            try:
-                with open(self.file_path(backup=True), "r", encoding="utf-8") as file:
-                    self.config = ujson.load(file)
-                    return self.config
-            except OSError:
-                # set empty object
-                self.config = {}
-                return self.config
+            log("ERROR", f"Config.load({self.file_path}): not found: return " + "\{\}")
+            self.config = {}  # Set empty object
+            return self.config
 
-    # reset config
-    def reset_config(self):
+    def reset(self):
+        """Reset some configuration settings"""
+
+        log("INFO", f"Config.reset()")
         self.config["temp_last_measurement"] = 0
         self.config["temp_last_measurement_time"] = 0
         self.config["temp_change_category"] = "LOW"
 
-    # save config
-    def save_config(self, backup=False):
-        try:
-            with open(self.file_path(backup), "w", encoding="utf-8") as file:
-                ujson.dump(self.config, file)
-        except OSError as e:
-            print(f"ERROR: writing to {self.file_name}: {e}")
+    async def save(self):
+        """Save the configuration to file"""
+        async with self.lock:
+            try:
+                log("INFO", f"Config.save(): {self.file_path}")
+                with open(self.file_path, "w", encoding="utf-8") as file:
+                    ujson.dump(self.config, file)
+            except Exception as e:
+                log(
+                    "ERROR",
+                    f"Config.save({self.file_path}): {e}",
+                )
 
-    # create config backup
-    def create_config_backup(self):
-        self.save_config(backup=True)
+    async def get_config(self):
+        """Return the complete configuration as dictionary"""
+        async with self.lock:
+            try:
+                log("INFO", f"Config.get_config()")
+                return self.config
+            except Exception as e:
+                log("ERROR", f"Config.get_config(): {e}")
 
-    # get value
-    def get_value(self, key, default=None):
-        return self.config.get(key, default)
+    async def get(self, key, default=None):
+        """Return the value for a given key"""
+        async with self.lock:
+            return self.config.get(key, default)
 
-    # get bool value
-    def get_bool_value(self, key, default=False):
-        try:
-            value = self.config.get(str(key), bool(default))
-            if isinstance(value, bool):
-                return value
-            if isinstance(value, int):
-                if value >= 1:
-                    return True
-                else:
-                    return False
-            if isinstance(value, str):
-                if value.lower() in ["true", "1", "yes", "on"]:
-                    return True
-                elif value.lower() in ["false", "0", "no", "off", None]:
-                    return False
-            return False
-        except (ValueError, TypeError):
-            return bool(default)
+    async def get_bool(self, key, default=False):
+        """Return the bool value for a given key"""
+        async with self.lock:
+            return get_bool(self.config.get(key), "Config", "get_bool")
 
-    # get int value
-    def get_int_value(self, key, default=0):
-        try:
-            value = self.config.get(str(key), int(default))
-            return int(value)
-        except (ValueError, TypeError):
-            return int(default)
+    async def get_int(self, key, default=0):
+        """Return the int value for a given key"""
+        async with self.lock:
+            return get_int(self.config.get(key), default, "Config", "get_int")
 
-    # get float value
-    def get_float_value(self, key, default=0.0, decimal=None):
-        try:
-            value = self.config.get(str(key), float(default))
-            float_value = float(value)
-            if decimal is not None:
-                return round(float_value, int(decimal))
-            return float_value
-        except (ValueError, TypeError):
-            return float(default)
+    async def get_float(self, key, default=0.0, decimal=None):
+        """Return the float value for a given key"""
+        async with self.lock:
+            return get_float(
+                self.config.get(key), default, decimal, "Config", "get_float"
+            )
 
-    # set value
-    def set_value(self, key, value):
-        self.config[str(key)] = value
+    async def set(self, key, value):
+        """Save the value for a given key"""
+        async with self.lock:
+            try:
+                self.config[str(key)] = value
+            except Exception as e:
+                log("ERROR", "Config.set(): failed: {e}")
 
 
-# instance Config()
 config = Config()

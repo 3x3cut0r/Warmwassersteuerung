@@ -1,26 +1,24 @@
-# imports
-import time  # https://docs.micropython.org/en/latest/library/time.html
 import uasyncio as asyncio  # https://docs.micropython.org/en/latest/library/asyncio.html
-from src.log import log
-
-# from src.button import check_button
+import time  # https://docs.micropython.org/en/latest/library/time.html
+from utils.log import log  # logging function
 from src.config import config  # Config() instance
-from src.lcd import print_lcd, print_lcd_char, rjust
-from src.relay import open_relay, close_relay
+from src.lcd import lcd  # LCD() instance
+from src.relay import relay_open, relay_close  # Relay() instance
 from src.temp import temp_sensor, temp_sensor_2  # TemperatureSensor() instance
 
+
 # ==================================================
-# functions
+# Functions
 # ==================================================
 
 
-# categorize temp change
-def categorize_temp_change(temp_change=0.0):
-    # load config
-    high_threshold = config.get_float_value("temp_change_high_threshold_temp", 1.0)
-    # medium_threshold = config.get_float_value("temp_change_medium_threshold", 0.3)
+# Categorize temp change
+async def categorize_temp_change(temp_change=0.0):
+    # Load config
+    high_threshold = await config.get_float("temp_change_high_threshold_temp", 1.0)
+    # Medium_threshold = await config.get_float("temp_change_medium_threshold", 0.3)
 
-    # set category
+    # Set category
     abs_temp_change = abs(temp_change)
     if abs_temp_change >= high_threshold:
         category = "HIGH"  # TempChangeCategory.HIGH
@@ -28,76 +26,91 @@ def categorize_temp_change(temp_change=0.0):
     #     category = "MEDIUM"  # TempChangeCategory.MEDIUM
     else:
         category = "LOW"  # TempChangeCategory.LOW
-    config.set_value("temp_change_category", category)
 
-    # temp increasing?
+    old_category = await config.get("temp_change_category")
+    if old_category != category:
+        log("INFO", f"Main.categorize_temp_change({temp_change}) -> {category}")
+
+    await config.set("temp_change_category", category)
+
+    # Temp increasing?
     arrow_direction = 0 if temp_change > 0 else 1
-    config.set_value("temp_increasing", 0 if temp_change <= 0 else 1)
-    print_lcd(2, 0, f"Temperatur   {category}")
-    print_lcd_char(2, 11, arrow_direction)
+    await config.set("temp_increasing", 0 if temp_change <= 0 else 1)
+    await lcd.print(2, 0, f"Temperatur   {category}")
+    await lcd.print_char(2, 11, arrow_direction)
 
     return category
 
 
-# adjust relay time based on temp category
-def adjust_relay_time_based_on_temp_category():
-    # load config
-    relay_time = config.get_int_value("relay_time", 1200)
-    temp_increasing = config.get_bool_value("temp_increasing", False)
+# Adjust relay time based on temp category
+async def adjust_relay_time_based_on_temp_category():
+    # Load config
+    relay_time = await config.get_int("relay_time", 1200)
+    temp_increasing = await config.get_bool("temp_increasing", False)
 
-    # only on temp_increasing = true
+    # Only on temp_increasing = true
     if temp_increasing:
+        temp_category = await config.get("temp_change_category", "LOW")
 
-        temp_category = config.get_value("temp_change_category", "LOW")
         if temp_category == "HIGH":
-            return int(
-                relay_time
-                * config.get_float_value(
-                    "temp_change_high_threshold_relay_time_multiplier", 1.5
-                )
-            )  # shorter opening time for rapid temperature changes
+            # Shorter opening time for rapid temperature changes
+            multiplier = await config.get_float(
+                "temp_change_high_threshold_relay_time_multiplier", 1.5
+            )
+
         # elif temp_category == "MEDIUM":
-        #     return int(
-        #         relay_time
-        #         * config.get_float_value(
-        #             "temp_change_medium_threshold_relay_time_multiplier", 1.25
-        #        )
-        #     )  # moderate opening time for normal temperature changes
+        #     # Moderate opening time for normal temperature changes
+        #     multiplier = await config.get_float(
+        #         "temp_change_medium_threshold_relay_time_multiplier", 1.25
+        #     )
 
-    return relay_time  # normal opening time for slow temperature changes
+        new_relay_time = int(relay_time * multiplier)
+
+        if new_relay_time != relay_time:
+            log("INFO", f"Main.adjust_relay_time() -> {new_relay_time}")
+
+        return new_relay_time
+
+    # Normal opening time for slow temperature changes
+    return relay_time
 
 
-# adjust update time based on temp category
-def adjust_update_time_based_on_temp_category():
-    # load config
-    update_time = config.get_int_value("update_time", 120)
-    temp_increasing = config.get_bool_value("temp_increasing", False)
+# Adjust update time based on temp category
+async def adjust_update_time_based_on_temp_category():
+    # Load config
+    update_time = await config.get_int("update_time", 120)
+    temp_increasing = await config.get_bool("temp_increasing", False)
 
-    # only on temp_increasing = true
+    # Only on temp_increasing = true
     if temp_increasing:
+        temp_category = await config.get("temp_change_category", "LOW")
 
-        temp_category = config.get_value("temp_change_category", "LOW")
         if temp_category == "HIGH":
-            return int(
-                update_time
-                * config.get_float_value(
-                    "temp_change_high_threshold_update_time_multiplier", 0.5
-                )
-            )  # temp measurement takes place very often
+            # Temp measurement takes place very often
+            multiplier = await config.get_float(
+                "temp_change_high_threshold_update_time_multiplier", 0.5
+            )
+
         # elif temp_category == "MEDIUM":
-        #     return int(
-        #         update_time
-        #         * config.get_float_value(
-        #             "temp_change_medium_threshold_update_time_multiplier", 0.75
-        #        )
-        #     )  # moderate opening time for normal temperature changes
+        #     # Moderate opening time for normal temperature changes
+        #     multiplier = await config.get_float(
+        #         "temp_change_medium_threshold_update_time_multiplier", 0.75
+        #     )
 
-    return update_time  # temp measurement takes place normally
+        new_update_time = int(update_time * multiplier)
+
+        if new_update_time != update_time:
+            log("INFO", f"Main.adjust_update_time() -> {new_update_time}")
+
+        return new_update_time
+
+    # Temp measurement takes place normally
+    return update_time
 
 
-# convert utf-8 characters to HD44780 characters
-# get dual number from the HD44780 table: https://de.wikipedia.org/wiki/HD44780#Schrift_und_Zeichensatz
-# convert dual number to octal number: https://www.arndt-bruenner.de/mathe/scripts/Zahlensysteme.htm
+# Convert utf-8 characters to HD44780 characters
+# Get dual number from the HD44780 table: https://de.wikipedia.org/wiki/HD44780#Schrift_und_Zeichensatz
+# Convert dual number to octal number: https://www.arndt-bruenner.de/mathe/scripts/Zahlensysteme.htm
 def convert_utf8(string=""):
     replacements = {
         "ß": "\u00DF",  # Unicode for ß
@@ -111,144 +124,130 @@ def convert_utf8(string=""):
     return string
 
 
-# update current temp on lcd
+# Update current temp on lcd
 async def update_temp(sensor_number=1):
-    # set sensor postfix
+    # Set sensor postfix
     sensor_postfix = f"_{sensor_number}" if sensor_number > 1 else ""
 
-    # read temp
+    # Read temp
     current_temp = await globals()[f"temp_sensor{sensor_postfix}"].get_temp()
 
-    # set temp
-    config.set_value(f"current_temp{sensor_postfix}", current_temp)
+    if current_temp is not None:
+        # Set LCD columns once
+        lcd_cols_half = int(lcd.cols / 2)
 
-    # set LCD columns once
-    lcd_cols = config.get_int_value("LCD_COLS", 20)
-    lcd_cols_half = int(lcd_cols / 2)
+        # Format the temperature string
+        current_temp_string = lcd.rjust(f"{current_temp:.1f} °C", lcd_cols_half)
+        current_temp_string_utf8 = convert_utf8(current_temp_string)
 
-    # format the temperature string
-    current_temp_string = rjust(f"{current_temp:.1f} °C", lcd_cols_half)
-    current_temp_string_utf8 = convert_utf8(current_temp_string)
+        log("INFO", f"Functions.update_temp({sensor_number}): {current_temp:.1f} °C")
 
-    log("INFO", f"update_temp{sensor_postfix}({current_temp_string_utf8})")
-
-    # print temp on LCD
-    # ....................
-    # temp 2     temp 1
-    # -127.0 °C  -127.0 °C
-    temp_pos = max(lcd_cols - len(current_temp_string), 0)
-    if sensor_number > 1:
-        temp_pos = max(lcd_cols_half - len(current_temp_string), 0)
-    print_lcd(0, temp_pos, current_temp_string_utf8, False)
+        # Print temp on LCD
+        # ....................
+        # temp 2     temp 1
+        # -127.0 °C  -127.0 °C
+        temp_pos = max(lcd.cols - len(current_temp_string), 0)
+        if sensor_number > 1:
+            temp_pos = max(lcd_cols_half - len(current_temp_string), 0)
+        await lcd.print(0, temp_pos, current_temp_string_utf8, False)
 
 
-# print nominal temp
-def print_nominal_temp():
-    # load config
-    min_temp = config.get_float_value("nominal_min_temp", 42.0)
-    max_temp = config.get_float_value("nominal_max_temp", 57.0)
+# Print nominal temp
+async def print_nominal_temp():
+    # Load config
+    min_temp = await config.get_float("nominal_min_temp", 42.0)
+    max_temp = await config.get_float("nominal_max_temp", 57.0)
 
-    # set lower and upper bounds for nominal temperatures
+    # Set lower and upper bounds for nominal temperatures
     nominal_min_temp = max(0.0, min(120.0, min_temp))
     nominal_max_temp = max(nominal_min_temp, min(120.0, max_temp))
 
-    # format nominal temperature string
+    # Format nominal temperature string
     nominal_temp = f"{nominal_min_temp:.1f} - {nominal_max_temp:.1f} °C"
 
-    # calculate the position for displaying the temperature
-    lcd_cols = config.get_int_value("LCD_COLS", 4)
-    temp_pos = lcd_cols - len(nominal_temp)
+    # Calculate the position for displaying the temperature
+    temp_pos = lcd.cols - len(nominal_temp)
 
-    # print the formatted temperature on LCD
-    print_lcd(1, 0, "Soll:")
-    print_lcd(1, temp_pos, nominal_temp)
+    # Print the formatted temperature on LCD
+    await lcd.print(1, 0, "Soll:")
+    await lcd.print(1, temp_pos, nominal_temp)
 
 
-# set relay
-async def set_relay(pin, relay_time):
-    # load config
-    current_temp = config.get_float_value("current_temp", -127.0)
-    relay_open_pin = config.get_int_value("RELAY_OPEN_PIN", 14)
-    relay_close_pin = config.get_int_value("RELAY_CLOSE_PIN", 15)
+# Open relays depending on temp
+async def open_relays(relay_time):
 
-    # only switch if the temperature can be read
+    # Load config
+    current_temp = await config.get_float("current_temp", -127.0)
+    nominal_min_temp = await config.get_float("nominal_min_temp", 42.0)
+    nominal_max_temp = await config.get_float("nominal_max_temp", 58.0)
+
+    # Set stop timer
+    await config.set("stop_timer", relay_time // 1000 + 1)
+
+    # Only switch if the temperature can be read
     if 0 < current_temp <= 120:
-        if pin == relay_open_pin:
-            print_lcd(3, 0, "öffne Ventil     >>>")
-            await open_relay(relay_time)
-        elif pin == relay_close_pin:
-            print_lcd(3, 0, "schließe Ventil: <<<")
-            await close_relay(relay_time)
+
+        if current_temp < nominal_min_temp:
+            # Increase temp
+            await lcd.print(3, 0, "öffne Ventil     >>>")
+            await relay_close.toggle(relay_time)
+
+        elif current_temp > nominal_max_temp:
+            # Decrease temp
+            await relay_open.toggle(relay_time)
+
+        else:
+            # Do nothing
+            await lcd.print(3, 0, "Soll Temp erreicht !")
+
     else:
-        print_lcd(3, 0, "Fehler: Temp Fehler!")
+        # Print error
+        await lcd.print(3, 0, "Fehler: Temp Fehler!")
         await asyncio.sleep(2)
 
 
-# open relays depending on temp
-async def open_relays(relay_time=config.get_int_value("relay_time", 1200)):
-    # load config
-    current_temp = config.get_float_value("current_temp", -127.0)
-    nominal_min_temp = config.get_float_value("nominal_min_temp", 42.0)
-    nominal_max_temp = config.get_float_value("nominal_max_temp", 58.0)
-    relay_open_pin = config.get_int_value("RELAY_OPEN_PIN", 14)
-    relay_close_pin = config.get_int_value("RELAY_CLOSE_PIN", 15)
-
-    # set stop timer
-    config.set_value("stop_timer", relay_time // 1000 + 1)
-
-    if current_temp < nominal_min_temp:
-        # increase temp
-        await set_relay(relay_close_pin, relay_time)
-    elif current_temp > nominal_max_temp:
-        # decrease temp
-        await set_relay(relay_open_pin, relay_time)
-    else:
-        # do nothing
-        print_lcd(3, 0, "Soll Temp erreicht !")
-
-
-# update temp display
+# Update temp display
 async def update_temp_display(rate, message, symbol):
     if rate >= 3:
-        print_lcd(2, 0, f"{message}   {symbol * 3}")
+        await lcd.print(2, 0, f"{message}   {symbol * 3}")
     elif rate >= 0.5:
-        print_lcd(2, 0, f"{message}    {symbol * 2}")
+        await lcd.print(2, 0, f"{message}    {symbol * 2}")
     else:
-        print_lcd(2, 0, f"{message}     {symbol}")
+        await lcd.print(2, 0, f"{message}     {symbol}")
 
     await asyncio.sleep(2)
-    print_lcd(2, 0, f"                    ")
+    await lcd.print(2, 0, f"                    ")
 
 
-# # update nominal temp
+# # Update nominal temp
 # async def update_nominal_temp(button_pin):
 #     button_long = 0
 #     rate = 0.1
 #
-#     # load config
-#     temp_up_pin = config.get_int_value("BUTTON_TEMP_UP_PIN", 1)
-#     temp_down_pin = config.get_int_value("BUTTON_TEMP_DOWN_PIN", 2)
-#     nominal_min_temp = config.get_float_value("nominal_min_temp", 42.0)
-#     nominal_max_temp = config.get_float_value("nominal_max_temp", 58.0)
+#     # Load config
+#     temp_up_pin = await config.get_int("BUTTON_TEMP_UP_PIN", 1)
+#     temp_down_pin = await config.get_int("BUTTON_TEMP_DOWN_PIN", 2)
+#     nominal_min_temp = await config.get_float("nominal_min_temp", 42.0)
+#     nominal_max_temp = await config.get_float("nominal_max_temp", 58.0)
 #
-#     # while button is pressed
+#     # While button is pressed
 #     while check_button(button_pin):
-#         # increase temp on temp up button
+#         # Increase temp on temp up button
 #         if button_pin == temp_up_pin:
 #             nominal_min_temp += rate
 #             nominal_max_temp += rate
 #             await update_temp_display(rate, "TempUp Pressed", "+")
 #
-#         # decrease temp on temp down button
+#         # Decrease temp on temp down button
 #         elif button_pin == temp_down_pin:
 #             nominal_min_temp -= rate
 #             nominal_max_temp -= rate
 #             await update_temp_display(rate, "TempDown Pressed", "-")
 #
 #         # Update config values and print nominal temp
-#         config.set_value("nominal_min_temp", nominal_min_temp)
-#         config.set_value("nominal_max_temp", nominal_max_temp)
-#         print_nominal_temp()
+#         await config.set("nominal_min_temp", nominal_min_temp)
+#         await config.set("nominal_max_temp", nominal_max_temp)
+#         await print_nominal_temp()
 #
 #         # Adjust rate and sleep
 #         await asyncio.sleep(0.5)
@@ -258,20 +257,20 @@ async def update_temp_display(rate, message, symbol):
 #         elif button_long == 10:
 #             rate = 1  # Adjust rate as needed
 #
-#     # save config
-#     config.save_config()
+#     # Save config
+#     await config.save()
 
 
-# check buttons
+# Check buttons
 # async def check_buttons():
-#     # check if buttons_activated = 1
-#     if config.get_bool_value("buttons_activated", False):
-#         # update nomianl temp
-#         await update_nominal_temp(config.get_int_value("BUTTON_TEMP_UP_PIN", 1))
-#         await update_nominal_temp(config.get_int_value("BUTTON_TEMP_DOWN_PIN", 2))
+#     # Check if buttons_activated = 1
+#     if await config.get_bool("buttons_activated", False):
+#         # Update nomianl temp
+#         await update_nominal_temp(await config.get_int("BUTTON_TEMP_UP_PIN", 1))
+#         await update_nominal_temp(await config.get_int("BUTTON_TEMP_DOWN_PIN", 2))
 
 
-# format time
+# Format time
 def format_time(secs):
     hours = secs // 3600
     mins = (secs % 3600) // 60
@@ -282,47 +281,47 @@ def format_time(secs):
         return f"{mins:02d}m {secs:02d}s"
 
 
-# update timer
-def update_timer(secs, message="Regle in:"):
-    stop_timer = config.get_int_value("stop_timer", 0)
+# Update timer
+async def update_timer(secs, message="Regle in:"):
+    stop_timer = await config.get_int("stop_timer", 0)
     if stop_timer >= 0:
-        log("INFO", f"stop_timer({stop_timer})")
-        config.set_value("stop_timer", stop_timer - 1)
+        log("VERBOSE", f"Functions.stop_timer({stop_timer})")
+        await config.set("stop_timer", (stop_timer - 1))
     else:
-        log("INFO", f"update_timer({secs})")
-        config.set_value("timer", secs)
+        log("VERBOSE", f"Functions.update_timer({secs})")
+        await config.set("timer", secs)
 
         time = format_time(secs)
-        cursor = 20 - len(time)
+        cursor = lcd.cols - len(time)
 
-        print_lcd(3, 0, message)
-        print_lcd(3, cursor, time)
+        await lcd.print(3, 0, message)
+        await lcd.print(3, cursor, time)
 
 
-# wait start
-async def wait_start(secs, lcd_text="Starte in:"):
-    log("INFO", f"wait start ({secs})")
+# Wait start
+async def wait_start(secs=0, lcd_text="Starte in:"):
+    log("VERBOSE", f"Functions.wait_start({secs})")
 
-    # load config
+    # Load config
     previous_millis = 0
-    interval = config.get_int_value("interval", 930)
-    temp_update_interval = config.get_int_value("temp_update_interval", 5)
+    interval = await config.get_int("interval", 930)
+    temp_update_interval = await config.get_int("temp_update_interval", 5)
 
     while secs > 0:
         current_millis = time.ticks_ms()
         if time.ticks_diff(current_millis, previous_millis) > interval:
-            # update timer
-            update_timer(secs, lcd_text)
+            # Update timer
+            await update_timer(secs, lcd_text)
 
-            # temp update on interval
+            # Temp update on interval
             if secs % temp_update_interval == 0:
                 await update_temp()
                 await update_temp(2)
 
-            # # check buttons
+            # # Check buttons
             # await check_buttons()
 
-            # decrease secs
+            # Decrease secs
             secs -= 1
             previous_millis = current_millis
 

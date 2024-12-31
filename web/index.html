@@ -18,12 +18,12 @@
         <form id="manualControlForm" method="post">
             <table>
                 <tr><td colspan="3"><h3>Steuerung Steuerung</h3></td></tr>
-                <tr><td><input class="button!!!--highlighted--!!!" type="button" value="Ventil &ouml;ffnen" onclick="submitManualControl('/open_relay')" /></td>
+                <tr><td><input class="button!!!--highlighted--!!!" type="button" value="Ventil &ouml;ffnen" onclick="submitManualControl('/relay/open')" /></td>
                     <td><input type="number" id="manual_relay_time" name="manual_relay_time" placeholder="1500" value="!!!--manual_relay_time--!!!" step="100" /></td>
-                    <td><input class="button!!!--highlighted--!!!" type="button" value="Ventil schlie&szlig;en" onclick="submitManualControl('/close_relay')" /></td></tr>
+                    <td><input class="button!!!--highlighted--!!!" type="button" value="Ventil schlie&szlig;en" onclick="submitManualControl('/relay/close')" /></td></tr>
             </table>
         </form>
-        <form id="configForm" action="/save_config" method="post">
+        <form id="configForm" action="/config/save" method="post">
             <table>
                 <tr><td colspan="3"><h3>Konfiguration</h3></td></tr>
                 <tr><td><input type="number" id="nominal_min_temp" name="nominal_min_temp" placeholder="42.0" value="!!!--nominal_min_temp--!!!" step="0.1" /></td>
@@ -107,14 +107,14 @@
                     <td><div for="RELAY_OPEN_PIN">Relais Öffnen (PIN)</div></td></tr>
                 <tr><td><div id="RELAY_CLOSE_PIN">!!!--RELAY_CLOSE_PIN--!!!</div></td>
                     <td><div for="RELAY_CLOSE_PIN">Relais Schließen (PIN)</div></td></tr>
-                <tr style="display: none;"><td><div id="BUTTON_TEMP_UP_PIN">!!!--BUTTON_TEMP_UP_PIN--!!!</div></td>
+                <tr><td><div id="BUTTON_TEMP_UP_PIN">!!!--BUTTON_TEMP_UP_PIN--!!!</div></td>
                     <td><div for="BUTTON_TEMP_UP_PIN">Knopf Temperatur Hoch (PIN)</div></td></tr>
-                <tr style="display: none;"><td><div id="BUTTON_TEMP_DOWN_PIN">!!!--BUTTON_TEMP_DOWN_PIN--!!!</div></td>
+                <tr><td><div id="BUTTON_TEMP_DOWN_PIN">!!!--BUTTON_TEMP_DOWN_PIN--!!!</div></td>
                     <td><div for="BUTTON_TEMP_DOWN_PIN">Knopf Temperatur Runter (PIN)</div></td></tr>
             </table><br />
             <input type="hidden" id="hidden_manual_relay_time" name="manual_relay_time" value="!!!--manual_relay_time--!!!">
         </form>
-        <form id="resetForm" action="/reset" method="post">
+        <form id="resetForm" action="/machine/reset" method="post">
             <table>
                 <tr><td><h3>Reset Pico</h3></td></tr>
                 <tr><td><input style="width: 104px;" type="checkbox" id="boot_normal" onclick="updateBootNormalHiddenField(this.checked);"!!!--boot_normal--!!!/></td>

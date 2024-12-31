@@ -1,76 +1,105 @@
-# imports
 import network
 import uasyncio as asyncio  # https://docs.micropython.org/en/latest/library/asyncio.html
-from src.log import log
+from utils.log import log  # logging function
 from src.config import config  # Config() instance
-from src.lcd import print_lcd
-
-wifi = network.WLAN(network.STA_IF)
-network.country(config.get_value("wifi_country", "DE"))
-show_message = 1
-wifi_is_activated = True
-
-# ==================================================
-# functions
-# ==================================================
+from src.lcd import lcd  # LCD() instance
 
 
-# connect wifi
-async def connect_wifi():
-    global wifi_is_activated
-    if wifi_is_activated:
-        global show_message
-        ssid = config.get_value("wifi_ssid")
-        log("INFO", f"connect_wifi(ssid = {ssid})")
+class WiFi:
+    """Manage the WiFi connection. (Singleton)"""
 
-        if ssid is not None:
-            password = config.get_value("wifi_password", "password")
+    _instance = None
 
-            # activate and connect wifi
-            try:
-                wifi.active(True)
-                wifi.connect(ssid, password)
-            except OSError as error:
-                log("ERROR", f"wifi module error: {error}")
-                log("ERROR", "disable wifi()")
-                wifi_is_activated = False
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(WiFi, cls).__new__(cls)
+            cls._instance.initialized = False
+        return cls._instance
 
-            # wait until conneciton is established
-            attempts = 0
-            max_attempts = config.get_int_value("wifi_max_attempts", 10)
-            while (
-                wifi_is_activated and not wifi.isconnected() and attempts < max_attempts
-            ):
-                await asyncio.sleep(1)
-                attempts += 1
-                print_lcd(2, 0, "verbinde WLAN ... {:02d}".format(attempts))
+    def __init__(self):
+        if not self.initialized:
+            self.wifi = None
+            self.wifi_is_activated = False
+            self.ssid = None
+            self.password = None
+            self.max_attempts = 10
+            self.show_message = 1
+            self.initialized = False
 
-            if wifi.isconnected():
-                if show_message >= 1:
-                    log("INFO", f"wifi connected: {wifi.ifconfig()}")
-                    print_lcd(2, 0, "WLAN wurde verbunden")
-                    await asyncio.sleep(3)
-                show_message = 0
+    async def initialize(self):
+        """Initialize the Wifi module"""
+
+        if self.initialized:
+            return
+        try:
+            self.wifi = network.WLAN(network.STA_IF)
+            self.wifi_is_activated = True
+            network.country(await config.get("wifi_country", "DE"))
+            self.ssid = await config.get("wifi_ssid", "ssid")
+            self.password = await config.get("wifi_password", "password")
+            self.max_attempts = await config.get_int("wifi_max_attempts", 10)
+            log("INFO", "WiFi.initialize(): successful")
+            self.initialized = True
+
+        except Exception as e:
+            log("ERROR", f"WiFi.initialize(): failed: {e}")
+
+    async def connect(self):
+        """Connect to the WiFi"""
+
+        if self.wifi_is_activated:
+            log("INFO", f"WiFi.connect(ssid={self.ssid})")
+
+            if self.ssid is not None:
+
+                # Activate and Connect WiFi
+                try:
+                    self.wifi.active(True)
+                    self.wifi.connect(self.ssid, self.password)
+                except OSError as e:
+                    log("ERROR", f"WiFi.connect(): failed: {e}")
+                    log("INFO", "WiFi.wifi_is_activated(False)")
+                    self.wifi_is_activated = False
+
+                # Wait until connection is established
+                attempts = 0
+                while (
+                    self.wifi_is_activated
+                    and not self.wifi.isconnected()
+                    and attempts < self.max_attempts
+                ):
+                    await asyncio.sleep(1)
+                    attempts += 1
+                    await lcd.print(2, 0, "verbinde WLAN ... {:02d}".format(attempts))
+
+                if self.wifi.isconnected():
+                    if self.show_message >= 1:
+                        log("INFO", f"WiFi.wifi.ifconfig(): {self.wifi.ifconfig()}")
+                        await lcd.print(2, 0, "WLAN wurde verbunden")
+                        await asyncio.sleep(3)
+                    self.show_message = 0
+                else:
+                    log("WARN", "WiFi.connect(): failed")
+                    await lcd.print(2, 0, "WLAN nicht verbunden")
             else:
-                log("WARN", "wifi connection failed!")
-                print_lcd(2, 0, "WLAN nicht verbunden")
-        else:
-            log("ERROR", f"no SSID found!")
-            print_lcd(2, 0, "keine SSID gefunden!")
-            wifi_is_activated = False
+                log("ERROR", f"WiFi.connect(): no SSID found")
+                await lcd.print(2, 0, "keine SSID gefunden!")
+                self.wifi_is_activated = False
 
-        await asyncio.sleep(5)
-        print_lcd(2, 0, " ")
+            await asyncio.sleep(5)
+            await lcd.print(2, 0, " ")
+
+    def is_activated(self):
+        log("INFO", f"WiFi.is_activated()")
+        return self.wifi_is_activated
+
+    def is_connected(self):
+        try:
+            log("INFO", f"WiFi.is_connected(): {self.wifi.isconnected()}")
+            return self.wifi.isconnected()
+        except Exception as error:
+            log("ERROR", f"WiFi.is_connected(): failed: {error}")
+            return False
 
 
-# check wifi is active
-def check_wifi_isactivated():
-    return wifi_is_activated
-
-
-# check wifi connection
-def check_wifi_isconnected():
-    try:
-        return wifi.isconnected()
-    except:
-        return False
+wifi = WiFi()
