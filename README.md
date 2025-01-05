@@ -41,6 +41,12 @@ ampy --port COM3 run main.py
 
 ## Änderungshistorie
 
+### v1.1.1
+
+- Fix: LCD.print() und LCD.clear() prüfen nun ob das LCD initialisiert wurde
+- Fix: LCD.lines werden nun auch ohne angeschlossenes LCD auf der Webseite angezeigt
+- Kopierskripte wurden vereinheitlicht
+
 ### v1.1.0
 
 - Neu: komplettes Redisign der Basiskomponenten:
