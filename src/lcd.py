@@ -61,6 +61,9 @@ class LCD:
                 if self.rows > 4:
                     self.rows = 4
 
+                # Empty lines list
+                self.lines = [" " * self.cols for _ in range(self.rows)]
+
                 # Setup I2C
                 sda_pin = Pin(self.sda_pin)
                 scl_pin = Pin(self.scl_pin)
@@ -105,9 +108,6 @@ class LCD:
 
                 # Clear LCD
                 await self.clear()
-
-                # Empty lines list
-                self.lines = [" " * self.cols for _ in range(self.rows)]
 
                 log("INFO", "LCD.initialize(): successful")
                 self.initialized = True
@@ -180,8 +180,9 @@ class LCD:
 
         async with self.lock:
             try:
-                self.lcd.clear()
-                log("INFO", f"LCD.clear()")
+                if self.initialized:
+                    self.lcd.clear()
+                    log("INFO", f"LCD.clear()")
 
             except Exception as e:
                 log("ERROR", f"LCD.clear(): failed: {e}")
@@ -317,9 +318,10 @@ class LCD:
         # Print LCD
         async with self.lock:
             try:
-                self.lcd.move_to(cursor, line)  # self.lcd.move_to(col, row)
-                self.lcd.putstr(message)
-                self.lcd.hide_cursor()
+                if self.initialized:
+                    self.lcd.move_to(cursor, line)  # self.lcd.move_to(col, row)
+                    self.lcd.putstr(message)
+                    self.lcd.hide_cursor()
 
             except Exception as e:
                 log("ERROR", f"LCD.print(): {e}")
@@ -348,8 +350,9 @@ class LCD:
             )
 
             async with self.lock:
-                self.lcd.move_to(cursor, line)  # self.lcd.move_to(col, row)
-                self.lcd.putchar(chr(char))
+                if self.initialized:
+                    self.lcd.move_to(cursor, line)  # self.lcd.move_to(col, row)
+                    self.lcd.putchar(chr(char))
 
         except Exception as e:
             log("ERROR", f"LCD.print_char(): {e}")
