@@ -1,5 +1,5 @@
 # Project specific files
-# config.json
+config.json
 .chatgpt/prompt.txt
 
 # MacOS files
