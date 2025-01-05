@@ -53,6 +53,7 @@ function CopyProjectFiles {
         python -m mpremote connect $port cp ./config.json :config.json
     }
 
+    Write-Host "  Erstelle utils..."
     python -m mpremote connect $port mkdir utils
     python -m mpremote connect $port cp ./utils/get_bool.py :utils/get_bool.py
     python -m mpremote connect $port cp ./utils/get_float.py :utils/get_float.py
@@ -60,6 +61,7 @@ function CopyProjectFiles {
     python -m mpremote connect $port cp ./utils/log.py :utils/log.py
     python -m mpremote connect $port cp ./utils/log_level.py :utils/log_level.py
 
+    Write-Host "  Erstelle src..."
     python -m mpremote connect $port mkdir src
     python -m mpremote connect $port cp ./src/button.py :src/button.py
     python -m mpremote connect $port cp ./src/config.py :src/config.py
@@ -73,6 +75,7 @@ function CopyProjectFiles {
     python -m mpremote connect $port cp ./src/temp.py :src/temp.py
     python -m mpremote connect $port cp ./src/wifi.py :src/wifi.py
 
+     Write-Host "  Erstelle web..."
     python -m mpremote connect $port mkdir web
     python -m mpremote connect $port cp ./web/index.html :web/index.html
     python -m mpremote connect $port cp ./web/styles.css :web/styles.css
