@@ -189,11 +189,12 @@ async def open_relays(relay_time):
 
         if current_temp < nominal_min_temp:
             # Increase temp
-            await lcd.print(3, 0, "öffne Ventil     >>>")
+            await lcd.print(3, 0, "schließe Ventil  >>>")
             await relay_close.toggle(relay_time)
 
         elif current_temp > nominal_max_temp:
             # Decrease temp
+            await lcd.print(3, 0, "öffne Ventil     >>>")
             await relay_open.toggle(relay_time)
 
         else:
