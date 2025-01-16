@@ -227,8 +227,14 @@ async def main():
         await config.save()
 
         # Write error.log
-        with open("/error.log", "w", encoding="utf-8") as file:
-            file.write(message)
+        with open("/error.log", "r+", encoding="utf-8") as file:
+            lines = file.readlines()
+            lines.append(message)
+            if len(lines) > 1024:
+                lines = lines[-1024:]
+            file.seek(0)
+            file.writelines(lines)
+            file.truncate()
 
         # Reset pico
         reset()
