@@ -52,6 +52,9 @@ async def adjust_relay_time_based_on_temp_category():
     if temp_increasing:
         temp_category = await config.get("temp_change_category", "LOW")
 
+        # Set default multiplier
+        multiplier = 1.0
+
         if temp_category == "HIGH":
             # Shorter opening time for rapid temperature changes
             multiplier = await config.get_float(
@@ -84,6 +87,9 @@ async def adjust_update_time_based_on_temp_category():
     # Only on temp_increasing = true
     if temp_increasing:
         temp_category = await config.get("temp_change_category", "LOW")
+
+        # Set default multiplier
+        multiplier = 1.0
 
         if temp_category == "HIGH":
             # Temp measurement takes place very often
