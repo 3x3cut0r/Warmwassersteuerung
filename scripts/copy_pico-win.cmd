@@ -27,6 +27,7 @@ echo copying files...
 ampy --port %PORT% put main.py main.py 2>NUL
 ampy --port %PORT% put config.json config.json 2>NUL
 ampy --port %PORT% put webserver.py webserver.py 2>NUL
+ampy --port %PORT% put error.log error.log 2>NUL
 
 echo   mkdir utils...
 ampy --port %PORT% mkdir utils 2>NUL

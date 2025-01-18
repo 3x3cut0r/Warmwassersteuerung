@@ -222,19 +222,13 @@ async def main():
         message = f"ERROR: main.py: {str(e)}\n"
         print(message)
 
+        # Write error.log
+        with open("/error.log", "a", encoding="utf-8") as file:
+            file.write(message)
+
         # Set normal boot to False
         await config.set("boot_normal", 0)
         await config.save()
-
-        # Write error.log
-        with open("/error.log", "r+", encoding="utf-8") as file:
-            lines = file.readlines()
-            lines.append(message)
-            if len(lines) > 1024:
-                lines = lines[-1024:]
-            file.seek(0)
-            file.writelines(lines)
-            file.truncate()
 
         # Reset pico
         reset()
