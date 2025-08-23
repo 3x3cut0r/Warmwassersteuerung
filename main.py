@@ -22,6 +22,7 @@ from machine import (
 from webserver import webserver
 from utils.log import log  # logging function
 from utils.log_level import log_level
+from utils.error_logger import append_log
 from src.config import config  # Config() instance
 from src.lcd import lcd  # LCD() instance
 from src.led import led  # LED() instance
@@ -222,9 +223,8 @@ async def main():
         message = f"ERROR: main.py: {str(e)}\n"
         print(message)
 
-        # Write error.log
-        with open("/error.log", "a", encoding="utf-8") as file:
-            file.write(message)
+        # Append error message to log file
+        append_log(message, "/main_error.log")
 
         # Set normal boot to False
         await config.set("boot_normal", 0)

@@ -13,6 +13,8 @@ echo deleting files...
 ampy --port %PORT% rm boot.py 2>NUL
 ampy --port %PORT% rm config.json 2>NUL
 ampy --port %PORT% rm error.log 2>NUL
+ampy --port %PORT% rm main_error.log 2>NUL
+ampy --port %PORT% rm web_error.log 2>NUL
 ampy --port %PORT% rm main.py 2>NUL
 ampy --port %PORT% rm webserver.py 2>NUL
 
@@ -27,7 +29,8 @@ echo copying files...
 ampy --port %PORT% put main.py main.py 2>NUL
 ampy --port %PORT% put config.json config.json 2>NUL
 ampy --port %PORT% put webserver.py webserver.py 2>NUL
-ampy --port %PORT% put error.log error.log 2>NUL
+ampy --port %PORT% put main_error.log main_error.log 2>NUL
+ampy --port %PORT% put web_error.log web_error.log 2>NUL
 
 echo   mkdir utils...
 ampy --port %PORT% mkdir utils 2>NUL

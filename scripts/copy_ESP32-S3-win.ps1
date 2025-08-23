@@ -17,6 +17,8 @@ function RemoveProjectFiles {
         python -m mpremote connect $port rm :config.json
     }
     python -m mpremote connect $port rm :error.log
+    python -m mpremote connect $port rm :main_error.log
+    python -m mpremote connect $port rm :web_error.log
 
     python -m mpremote connect $port rm :utils/get_bool.py
     python -m mpremote connect $port rm :utils/get_float.py
@@ -53,7 +55,8 @@ function CopyProjectFiles {
         Write-Host "Kopiere config.json"
         python -m mpremote connect $port cp ./config.json :config.json
     }
-    python -m mpremote connect $port cp ./error.log :error.log
+    python -m mpremote connect $port cp ./main_error.log :main_error.log
+    python -m mpremote connect $port cp ./web_error.log :web_error.log
 
     Write-Host "  Erstelle utils..."
     python -m mpremote connect $port mkdir utils
