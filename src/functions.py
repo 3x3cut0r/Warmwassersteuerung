@@ -6,6 +6,9 @@ from src.lcd import lcd  # LCD() instance
 from src.relay import relay_open, relay_close  # Relay() instance
 from src.temp import temp_sensor, temp_sensor_2  # TemperatureSensor() instance
 
+# List of available temperature sensors
+SENSORS = [temp_sensor, temp_sensor_2]
+
 
 # ==================================================
 # Functions
@@ -132,11 +135,8 @@ def convert_utf8(string=""):
 
 # Update current temp on lcd
 async def update_temp(sensor_number=1):
-    # Set sensor postfix
-    sensor_postfix = f"_{sensor_number}" if sensor_number > 1 else ""
-
-    # Read temp
-    current_temp = await globals()[f"temp_sensor{sensor_postfix}"].get_temp()
+    # Read temp from sensors list
+    current_temp = await SENSORS[sensor_number - 1].get_temp()
 
     if current_temp is not None:
         # Set LCD columns once
