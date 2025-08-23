@@ -59,7 +59,7 @@ async def adjust_relay_time_based_on_temp_category():
         multiplier = 1.0
 
         if temp_category == "HIGH":
-            # Shorter opening time for rapid temperature changes
+            # Longer opening time for rapid temperature changes
             multiplier = await config.get_float(
                 "temp_change_high_threshold_relay_time_multiplier", 1.5
             )
