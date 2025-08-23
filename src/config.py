@@ -99,7 +99,7 @@ class Config:
             try:
                 self.config[str(key)] = value
             except Exception as e:
-                log("ERROR", "Config.set(): failed: {e}")
+                log("ERROR", f"Config.set(): failed: {e}")
 
 
 config = Config()
