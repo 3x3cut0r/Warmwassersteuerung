@@ -9,6 +9,7 @@ from utils.get_float import get_float
 from utils.get_int import get_int
 from utils.log import log  # logging function
 from utils.log_level import log_level
+from utils.error_logger import append_log
 from src.config import config  # Config() instance
 from src.lcd import lcd  # LCD() instance
 from src.wifi import wifi  # WiFi() instance
@@ -494,9 +495,8 @@ async def webserver():
         message = f"Webserver(): {str(e)}\n"
         print(f"ERROR: {message}")
 
-        # Write error.log
-        with open("/error.log", "w", encoding="utf-8") as file:
-            file.write(message)
+        # Append error message to log file
+        append_log(message, "/web_error.log")
 
 
 if __name__ == "__main__":
