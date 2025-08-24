@@ -41,6 +41,13 @@ ampy --port COM3 run main.py
 
 ## Änderungshistorie
 
+### v1.1.2
+
+- Neu: Fehler-Logger mit getrennten Logdateien für main und Webserver
+- Verbesserung: Docstrings und Kommentare überarbeitet
+- Verbesserung: Zugriff auf Temperatursensoren refaktoriert
+- Fix: Relais-Zeit-Anpassungslogik und Logging-Probleme behoben
+
 ### v1.1.1
 
 - Fix: LCD.print() und LCD.clear() prüfen nun ob das LCD initialisiert wurde
