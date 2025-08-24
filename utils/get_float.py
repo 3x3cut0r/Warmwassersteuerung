@@ -4,7 +4,23 @@ from utils.log import log  # logging function
 def get_float(
     value, default=0.0, decimal=None, log_class="Utils", log_function="get_float"
 ):
-    """Return the float value of a given value"""
+    """Convert arbitrary input to a ``float`` with optional rounding.
+
+    The function tries to interpret ``value`` as a floating point number. If the
+    conversion fails, ``default`` is returned and a log message is emitted. When
+    ``decimal`` is provided, the converted value is rounded to the specified
+    precision.
+
+    Args:
+        value: Input that should represent a numeric value.
+        default (float): Value used when conversion is not possible.
+        decimal (int, optional): Decimal places used for rounding the result.
+        log_class (str): Name of the calling class/module for log output.
+        log_function (str): Name of the calling function for log output.
+
+    Returns:
+        float: Parsed numeric value or the ``default`` fallback.
+    """
 
     # Check if default is a valid float
     if not isinstance(default, float):

@@ -6,7 +6,13 @@ from src.rlock import Rlock  # re-entrant asyncio.Lock()
 
 
 class Relay:
-    """Manage a GPIO connected Relay. (Singleton per PIN)"""
+    """Control a relay connected to a GPIO pin.
+
+    Each relay is treated as a singleton per GPIO pin so that concurrent parts of
+    the application do not accidentally create multiple instances for the same
+    hardware.  Access to the hardware pin is protected by a re-entrant lock to
+    allow nested asynchronous calls.
+    """
 
     _instances = {}
 
@@ -19,9 +25,17 @@ class Relay:
         return instance
 
     async def initialize(self, pin_number):
-        """
-        Initialize the Relay with a specific pin number.
-        If a relay with the given pin already exists, return that instance.
+        """Prepare the relay for use on the given GPIO ``pin_number``.
+
+        An existing instance for the same pin is returned to enforce singleton
+        behaviour.  When initialization succeeds the pin is set to output mode
+        and driven low so the relay starts in a deactivated state.
+
+        Args:
+            pin_number (int): GPIO pin to which the relay is attached.
+
+        Returns:
+            Relay | None: Initialized relay instance or ``None`` on failure.
         """
 
         if not pin_number or int(pin_number) == 0:
@@ -56,7 +70,7 @@ class Relay:
             return None
 
     async def activate(self):
-        """Activate the relay"""
+        """Energize the relay coil to close the circuit."""
 
         async with self.lock:
             try:
@@ -66,7 +80,7 @@ class Relay:
                 log("ERROR", f"Relay.activate(pin={self.pin_number}): failed: {e}")
 
     async def deactivate(self):
-        """Deactivate the relay"""
+        """Remove power from the relay coil to open the circuit."""
 
         async with self.lock:
             try:
@@ -76,7 +90,13 @@ class Relay:
                 log("ERROR", f"Relay.deactivate(pin={self.pin_number}): failed: {e}")
 
     async def toggle(self, relay_time=None):
-        """Toggle the relay state"""
+        """Activate the relay for a limited time and then deactivate it.
+
+        Args:
+            relay_time (int, optional): Duration in milliseconds the relay
+                should remain active. When ``None`` the value is read from the
+                configuration.
+        """
 
         async with self.lock:
             try:

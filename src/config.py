@@ -7,7 +7,13 @@ from src.rlock import Rlock  # re-entrant asyncio.Lock()
 
 
 class Config:
-    """Manage the project configuration. (Singleton)"""
+    """Singleton for accessing and modifying project configuration values.
+
+    The configuration is stored as a JSON file on the device.  The class offers
+    asynchronous helpers to read and write settings while protecting concurrent
+    access with a re-entrant lock.  Basic type-conversion utilities are provided
+    for convenience.
+    """
 
     _instance = None
 
@@ -30,7 +36,12 @@ class Config:
             self.initialized = True
 
     def load(self):
-        """Load the configuration from file"""
+        """Load the configuration from the JSON file into memory.
+
+        Returns:
+            dict: Parsed configuration dictionary. An empty dictionary is
+                returned if the file does not exist.
+        """
         try:
             log("INFO", f"Config.load({self.file_path})")
             with open(self.file_path, "r", encoding="utf-8") as file:
@@ -42,7 +53,7 @@ class Config:
             return self.config
 
     def reset(self):
-        """Reset some configuration settings"""
+        """Reset runtime configuration values to their defaults."""
 
         log("INFO", f"Config.reset()")
         self.config["temp_last_measurement"] = 0
@@ -50,7 +61,7 @@ class Config:
         self.config["temp_change_category"] = "LOW"
 
     async def save(self):
-        """Save the configuration to file"""
+        """Persist the current configuration to disk."""
         async with self.lock:
             try:
                 log("INFO", f"Config.save(): {self.file_path}")
@@ -63,7 +74,7 @@ class Config:
                 )
 
     async def get_config(self):
-        """Return the complete configuration as dictionary"""
+        """Return a copy of the entire configuration dictionary."""
         async with self.lock:
             try:
                 log("INFO", f"Config.get_config()")
@@ -72,29 +83,38 @@ class Config:
                 log("ERROR", f"Config.get_config(): {e}")
 
     async def get(self, key, default=None):
-        """Return the value for a given key"""
+        """Retrieve the raw value for ``key`` from the configuration."""
         async with self.lock:
             return self.config.get(key, default)
 
     async def get_bool(self, key, default=False):
-        """Return the bool value for a given key"""
+        """Return the configuration value for ``key`` as a boolean."""
         async with self.lock:
             return get_bool(self.config.get(key), "Config", "get_bool")
 
     async def get_int(self, key, default=0):
-        """Return the int value for a given key"""
+        """Return the configuration value for ``key`` as an integer."""
         async with self.lock:
             return get_int(self.config.get(key), default, "Config", "get_int")
 
     async def get_float(self, key, default=0.0, decimal=None):
-        """Return the float value for a given key"""
+        """Return the configuration value for ``key`` as a float.
+
+        Args:
+            key (str): Configuration key.
+            default (float): Fallback when the value cannot be converted.
+            decimal (int, optional): Precision for rounding the result.
+
+        Returns:
+            float: Parsed float or ``default``.
+        """
         async with self.lock:
             return get_float(
                 self.config.get(key), default, decimal, "Config", "get_float"
             )
 
     async def set(self, key, value):
-        """Save the value for a given key"""
+        """Store ``value`` under ``key`` in the configuration dictionary."""
         async with self.lock:
             try:
                 self.config[str(key)] = value

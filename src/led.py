@@ -6,7 +6,7 @@ from src.rlock import Rlock  # re-entrant asyncio.Lock()
 
 
 class LED:
-    """Manage the LED light. (Singleton)"""
+    """Singleton wrapper for controlling the on-board status LED."""
 
     _instance = None
 
@@ -23,7 +23,7 @@ class LED:
             self.initialized = False
 
     async def initialize(self):
-        """Initialize the LED."""
+        """Configure the LED pin and restore its last state."""
 
         if self.initialized:
             return
@@ -43,7 +43,11 @@ class LED:
             log("ERROR", f"LED.initialize({self.value}): failed: {e}")
 
     async def set(self, value):
-        """Set the LED state."""
+        """Set the LED output state.
+
+        Args:
+            value (bool): Desired LED state where ``True`` turns it on.
+        """
 
         async with self.lock:
             try:
@@ -57,19 +61,19 @@ class LED:
                 log("ERROR", f"LED.set({value}): failed: {e}")
 
     async def activate(self):
-        """Activates the LED."""
+        """Turn the LED on and log the action."""
 
         await self.set(True)
         log("INFO", "LED.activate()")
 
     async def deactivate(self):
-        """Deactivates the LED."""
+        """Turn the LED off and log the action."""
 
         await self.set(False)
         log("INFO", "LED.deactivate()")
 
     async def toggle(self):
-        """Toggles the LED state."""
+        """Invert the current LED state."""
 
         await self.set(not self.value)
 

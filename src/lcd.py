@@ -10,7 +10,7 @@ from src.rlock import Rlock  # re-entrant asyncio.Lock()
 
 
 class LCD:
-    """Manage the LCD. (Singleton)"""
+    """Singleton manager for the character LCD display."""
 
     _instance = None
 
@@ -34,13 +34,11 @@ class LCD:
             self.initialized = False
 
     async def initialize(self):
-        """Initialize the LCD
-
-        Args:
-            None: This function does not support arguments.
+        """Initialize hardware interfaces and prepare the LCD for use.
 
         Returns:
-            self: A LCD() object.
+            LCD | None: ``self`` when initialization succeeds, otherwise
+            ``None`` if an error occurs.
         """
 
         if self.initialized:
@@ -126,14 +124,10 @@ class LCD:
             return None
 
     async def set_backlight(self, value=True):
-        """
-        Manage the LCD backlight
+        """Enable or disable the LCD backlight.
 
         Args:
-            value (bool): The value to set the backlight.
-
-        Returns:
-            None: This function does not return a value.
+            value (bool): ``True`` to switch the backlight on.
         """
 
         async with self.lock:
@@ -148,7 +142,7 @@ class LCD:
                 log("ERROR", f"LCD.set_backlight({value}): failed: {e}")
 
     async def set_cursor(self, value=True):
-        """set the LCD cursor"""
+        """Show or hide the cursor on the LCD."""
 
         async with self.lock:
             try:
@@ -162,7 +156,7 @@ class LCD:
                 log("ERROR", f"LCD.set_cursor({value}): failed: {e}")
 
     async def blink_cursor(self, value=True):
-        """Turn on/off the LCD blink cursor"""
+        """Enable or disable the blinking cursor."""
 
         async with self.lock:
             try:
@@ -176,7 +170,7 @@ class LCD:
                 log("ERROR", f"LCD.blink_cursor({value}): failed: {e}")
 
     async def clear(self):
-        """Clear the LCD screen"""
+        """Clear the LCD screen."""
 
         async with self.lock:
             try:
@@ -211,7 +205,7 @@ class LCD:
     # Get dual number from the HD44780A00 table: https://de.wikipedia.org/wiki/HD44780#Schrift_und_Zeichensatz
     # Convert dual number to octal number: https://www.arndt-bruenner.de/mathe/scripts/Zahlensysteme.htm
     def convert_HD44780A00(self, string=""):
-        """Convert utf-8 characters to HD44780A00 characters"""
+        """Convert UTF-8 characters to the HD44780A00 character set."""
 
         replacements = {
             "ß": "\342",  # HD44780A00 for ß
@@ -225,26 +219,26 @@ class LCD:
         return string
 
     def ljust(self, string="", width=0, fillchar=" "):
-        """Fill string with fillchar until width is reached. Place string on the left side."""
+        """Pad ``string`` on the right with ``fillchar`` up to ``width`` characters."""
 
         if len(str(string)) >= int(width):
             return str(string)
         return str(string + str(fillchar) * (int(width) - len(str(string))))
 
     def rjust(self, string="", width=0, fillchar=" "):
-        """Fill string with fillchar until width is reached. Place string on the right side."""
+        """Pad ``string`` on the left with ``fillchar`` up to ``width`` characters."""
 
         if len(str(string)) >= int(width):
             return str(string)
         return str(str(fillchar) * (int(width) - len(str(string))) + string)
 
     def fill(self, string="", cursor=0, padding=" "):
-        """Fill string with spaces up to 20 chars"""
+        """Pad ``string`` with ``padding`` so it fills the remaining line width."""
 
         return self.ljust(str(string), (self.cols - int(cursor)), str(padding))
 
     async def get_line(self, line=0):
-        """Return LCD line"""
+        """Return the cached contents of a single LCD line."""
 
         async with self.lock:
             try:
@@ -258,7 +252,7 @@ class LCD:
                 return ""
 
     async def get_lines(self):
-        """Return LCD lines"""
+        """Return the cached contents of all LCD lines."""
 
         async with self.lock:
             try:
@@ -269,7 +263,7 @@ class LCD:
                 return []
 
     async def set_lines(self, line=0, message=""):
-        """Set LCD lines"""
+        """Replace the content of the cached line ``line`` with ``message``."""
 
         async with self.lock:
             try:
@@ -279,7 +273,7 @@ class LCD:
                 log("ERROR", f"LCD.set_lines(): {e}")
 
     async def set_line(self, line=0, cursor=0, message=""):
-        """Set LCD line"""
+        """Insert ``message`` into the cached line at ``cursor`` position."""
 
         async with self.lock:
             try:
@@ -299,7 +293,14 @@ class LCD:
                 log("ERROR", f"LCD.set_line(): {e}")
 
     async def print(self, line=0, cursor=0, message="", fill=True):
-        """Print a message on a given LCD line and cursor position"""
+        """Display a string at the given line and cursor position.
+
+        Args:
+            line (int): Line index on the display.
+            cursor (int): Column position.
+            message (str): Text to show.
+            fill (bool): If ``True`` the message is padded to the end of line.
+        """
 
         line = self.check_line(line, "set_line")
         cursor = self.check_cols(cursor, "set_line")
@@ -327,7 +328,7 @@ class LCD:
                 log("ERROR", f"LCD.print(): {e}")
 
     async def print_char(self, line=0, cursor=0, char=0):
-        """Print a character on a given LCD line and cursor position"""
+        """Write a single character code to the display at ``line``/``cursor``."""
 
         try:
             line = self.check_line(line, "set_line")

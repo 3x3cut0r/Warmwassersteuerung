@@ -9,6 +9,9 @@ def append_log(msg: str, path: str, max_size: int = 1024 * 1024) -> None:
         path (str): Target file path.
         max_size (int, optional): Maximum allowed file size in bytes.
             Defaults to 1 MiB.
+
+    Returns:
+        None
     """
     try:
         # Append the message

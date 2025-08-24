@@ -66,8 +66,10 @@ class LcdApi:
         self.display_on()
 
     def clear(self):
-        """Clears the LCD display and moves the cursor to the top left
-        corner.
+        """Clear the display and reset the cursor to the top-left corner.
+
+        Returns:
+            None
         """
         self.hal_write_command(self.LCD_CLR)
         self.hal_write_command(self.LCD_HOME)
@@ -75,66 +77,78 @@ class LcdApi:
         self.cursor_y = 0
 
     def show_cursor(self):
-        """Causes the cursor to be made visible."""
-        self.hal_write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY |
-                               self.LCD_ON_CURSOR)
+        """Make the cursor visible on the display."""
+        self.hal_write_command(
+            self.LCD_ON_CTRL | self.LCD_ON_DISPLAY | self.LCD_ON_CURSOR
+        )
 
     def hide_cursor(self):
-        """Causes the cursor to be hidden."""
+        """Hide the cursor from the display."""
         self.hal_write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY)
 
     def blink_cursor_on(self):
-        """Turns on the cursor, and makes it blink."""
-        self.hal_write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY |
-                               self.LCD_ON_CURSOR | self.LCD_ON_BLINK)
+        """Enable the cursor and make it blink."""
+        self.hal_write_command(
+            self.LCD_ON_CTRL | self.LCD_ON_DISPLAY | self.LCD_ON_CURSOR | self.LCD_ON_BLINK
+        )
 
     def blink_cursor_off(self):
-        """Turns on the cursor, and makes it no blink (i.e. be solid)."""
-        self.hal_write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY |
-                               self.LCD_ON_CURSOR)
+        """Display a solid cursor without blinking."""
+        self.hal_write_command(
+            self.LCD_ON_CTRL | self.LCD_ON_DISPLAY | self.LCD_ON_CURSOR
+        )
 
     def display_on(self):
-        """Turns on (i.e. unblanks) the LCD."""
+        """Turn on (unblank) the LCD panel."""
         self.hal_write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY)
 
     def display_off(self):
-        """Turns off (i.e. blanks) the LCD."""
+        """Turn off (blank) the LCD panel."""
         self.hal_write_command(self.LCD_ON_CTRL)
 
     def backlight_on(self):
-        """Turns the backlight on.
+        """Turn the backlight on.
 
         This isn't really an LCD command, but some modules have backlight
-        controls, so this allows the hal to pass through the command.
+        controls, so this allows the HAL to pass through the command.
         """
         self.backlight = True
         self.hal_backlight_on()
 
     def backlight_off(self):
-        """Turns the backlight off.
+        """Turn the backlight off.
 
         This isn't really an LCD command, but some modules have backlight
-        controls, so this allows the hal to pass through the command.
+        controls, so this allows the HAL to pass through the command.
         """
         self.backlight = False
         self.hal_backlight_off()
 
     def move_to(self, cursor_x, cursor_y):
-        """Moves the cursor position to the indicated position. The cursor
-        position is zero based (i.e. cursor_x == 0 indicates first column).
+        """Move the cursor to a specific position on the display.
+
+        Args:
+            cursor_x (int): Zero-based column index.
+            cursor_y (int): Zero-based line index.
         """
         self.cursor_x = cursor_x
         self.cursor_y = cursor_y
-        addr = cursor_x & 0x3f
+        addr = cursor_x & 0x3F
         if cursor_y & 1:
-            addr += 0x40    # Lines 1 & 3 add 0x40
-        if cursor_y & 2:    # Lines 2 & 3 add number of columns
+            addr += 0x40  # Lines 1 & 3 add 0x40
+        if cursor_y & 2:  # Lines 2 & 3 add number of columns
             addr += self.num_columns
         self.hal_write_command(self.LCD_DDRAM | addr)
 
     def putchar(self, char):
-        """Writes the indicated character to the LCD at the current cursor
-        position, and advances the cursor by one position.
+        """Write a single character to the LCD at the current cursor position.
+
+        The cursor is advanced one position; if the end of a line is reached
+        it wraps according to the display configuration.
+
+        Args:
+            char (str): Character to write. Newlines trigger a move to the next
+                line.
         """
         if char == '\n':
             if self.implied_newline:
@@ -155,15 +169,20 @@ class LcdApi:
         self.move_to(self.cursor_x, self.cursor_y)
 
     def putstr(self, string):
-        """Write the indicated string to the LCD at the current cursor
-        position and advances the cursor position appropriately.
+        """Write a string to the LCD starting at the current cursor position.
+
+        Args:
+            string (str): Text to display.
         """
         for char in string:
             self.putchar(char)
 
     def custom_char(self, location, charmap):
-        """Write a character to one of the 8 CGRAM locations, available
-        as chr(0) through chr(7).
+        """Define a custom character glyph.
+
+        Args:
+            location (int): CGRAM slot (0-7) to program.
+            charmap (List[int]): List of 8 bytes defining the character.
         """
         location &= 0x7
         self.hal_write_command(self.LCD_CGRAM | (location << 3))
@@ -174,33 +193,19 @@ class LcdApi:
         self.move_to(self.cursor_x, self.cursor_y)
 
     def hal_backlight_on(self):
-        """Allows the hal layer to turn the backlight on.
-
-        If desired, a derived HAL class will implement this function.
-        """
+        """Hook for HAL implementations to enable the backlight."""
         pass
 
     def hal_backlight_off(self):
-        """Allows the hal layer to turn the backlight off.
-
-        If desired, a derived HAL class will implement this function.
-        """
+        """Hook for HAL implementations to disable the backlight."""
         pass
 
     def hal_write_command(self, cmd):
-        """Write a command to the LCD.
-
-        It is expected that a derived HAL class will implement this
-        function.
-        """
+        """Write a command byte to the LCD via the hardware abstraction layer."""
         raise NotImplementedError
 
     def hal_write_data(self, data):
-        """Write data to the LCD.
-
-        It is expected that a derived HAL class will implement this
-        function.
-        """
+        """Write a data byte to the LCD via the hardware abstraction layer."""
         raise NotImplementedError
 
     # This is a default implementation of hal_sleep_us which is suitable

@@ -6,7 +6,7 @@ from src.lcd import lcd  # LCD() instance
 
 
 class WiFi:
-    """Manage the WiFi connection. (Singleton)"""
+    """Singleton that manages the device's WiFi connection."""
 
     _instance = None
 
@@ -27,7 +27,7 @@ class WiFi:
             self.initialized = False
 
     async def initialize(self):
-        """Initialize the Wifi module"""
+        """Prepare the WiFi hardware and load configuration settings."""
 
         if self.initialized:
             return
@@ -45,7 +45,7 @@ class WiFi:
             log("ERROR", f"WiFi.initialize(): failed: {e}")
 
     async def connect(self):
-        """Connect to the WiFi"""
+        """Attempt to connect to the configured WiFi network."""
 
         if self.wifi_is_activated:
             log("INFO", f"WiFi.connect(ssid={self.ssid})")
@@ -90,10 +90,14 @@ class WiFi:
             await lcd.print(2, 0, " ")
 
     def is_activated(self):
+        """Return whether the WiFi interface is enabled."""
+
         log("INFO", f"WiFi.is_activated()")
         return self.wifi_is_activated
 
     def is_connected(self):
+        """Check the current WiFi connection status."""
+
         try:
             log("INFO", f"WiFi.is_connected(): {self.wifi.isconnected()}")
             return self.wifi.isconnected()

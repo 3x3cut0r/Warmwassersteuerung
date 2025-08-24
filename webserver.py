@@ -25,19 +25,56 @@ def encode_utf8(content=""):
 
 
 def is_checked(value):
-    """Return " checked", if value is true"""
+    """Return HTML ``checked`` attribute when a value evaluates to ``True``.
+
+    The function is primarily used for rendering form inputs. Any value that
+    matches common truthy strings (``"true"``, ``"1"``, ``"yes"``, ``"on"``) will
+    result in ``" checked"`` being returned so the attribute can be appended to
+    an input tag.
+
+    Args:
+        value: Value to evaluate for truthiness.
+
+    Returns:
+        str: ``" checked"`` if ``value`` is truthy, otherwise an empty string.
+    """
 
     return " checked" if str(value).lower() in ["true", "1", "yes", "on"] else ""
 
 
 def is_true(value):
-    """Return "true", if value is true"""
+    """Return ``"true"`` or ``"false"`` based on the truthiness of ``value``.
+
+    This helper normalizes various textual representations of booleans to the
+    lowercase strings ``"true"`` or ``"false"`` which are convenient for HTML or
+    JavaScript usage.
+
+    Args:
+        value: Value to interpret as a boolean.
+
+    Returns:
+        str: ``"true"`` if ``value`` represents ``True``, otherwise ``"false"``.
+    """
 
     return "true" if str(value).lower() in ["true", "1", "yes", "on"] else "false"
 
 
 async def replace_placeholder(content="", line_number=0, config_data={}):
-    """Replace placeholder in index.html file"""
+    """Replace placeholders in a line of ``index.html``.
+
+    The function inspects a line of the HTML template and substitutes custom
+    markers (e.g. ``!!!--KEY--!!!``) with dynamic values from the configuration
+    or runtime state.  Placeholders are associated with a specific line number to
+    keep the replacement logic simple for the constrained environment.
+
+    Args:
+        content (str): The original line from the template.
+        line_number (int): Current line number in ``index.html``.
+        config_data (dict): Configuration values used for replacement.
+
+    Returns:
+        str: Line with placeholders substituted by actual values.
+    """
 
     # Load complete LCD lines
     lcd_lines = await lcd.get_lines() or [""] * 4
@@ -183,7 +220,15 @@ async def replace_placeholder(content="", line_number=0, config_data={}):
 
 
 def parse_form_data(body):
-    """Parse form data"""
+    """Parse URL‑encoded form data into a dictionary.
+
+    Args:
+        body (str): Raw request body in ``key=value&...`` format.
+
+    Returns:
+        dict: Mapping of form keys to their associated values. Keys without an
+            explicit value are stored with ``None``.
+    """
 
     parsed_data = {}
     for pair in body.split("&"):
@@ -196,7 +241,12 @@ def parse_form_data(body):
 
 
 async def manage_wifi_connection():
-    """Manage wifi connection"""
+    """Continuously manage the WiFi connection.
+
+    The coroutine initializes the WiFi module and attempts to keep the device
+    connected.  Every 30 seconds the connection status is checked and a reconnection
+    is attempted if necessary.
+    """
 
     await wifi.initialize()
     await wifi.connect()
@@ -209,7 +259,16 @@ async def manage_wifi_connection():
 
 
 async def stream_file(writer, file_name, chunk_size=1024):
-    """Stream file with a given chunk_size"""
+    """Stream a file to a network writer in fixed-size chunks.
+
+    Args:
+        writer: ``uasyncio`` stream writer used to send data to the client.
+        file_name (str): Name of the file located in the ``web`` directory.
+        chunk_size (int): Number of bytes sent per iteration.
+
+    Returns:
+        None
+    """
 
     file_name_präfix = "../web/"
     try:
@@ -225,7 +284,12 @@ async def stream_file(writer, file_name, chunk_size=1024):
 
 
 async def generate_index_html(writer):
-    """Get index.html"""
+    """Generate the ``index.html`` response by streaming and substituting content.
+
+    The template is read line by line so it fits into memory-constrained devices.
+    Each line passes through :func:`replace_placeholder` to inject runtime data
+    before being written to the client.
+    """
 
     web_path = "/web/"
     file_path = web_path + "index.html"
@@ -245,7 +309,20 @@ async def generate_index_html(writer):
 
 
 async def handle_post(body, requested_path="/config/save"):
-    """Handle post from index.html"""
+    """Process POST requests from the web interface.
+
+    Depending on ``requested_path`` the submitted form data is used to update the
+    configuration or to trigger manual relay actions. The function returns a
+    snippet of HTML describing the outcome which is later embedded in the
+    response page.
+
+    Args:
+        body (str): Raw request payload.
+        requested_path (str): Endpoint that received the request.
+
+    Returns:
+        str: HTML fragment summarizing the result of the operation.
+    """
 
     # Response_content
     response_content = ""
@@ -380,7 +457,16 @@ async def handle_post(body, requested_path="/config/save"):
 
 
 async def send_response(writer, content_type, content=None):
-    """Send response"""
+    """Send an HTTP response header and optional body to the client.
+
+    Args:
+        writer: ``uasyncio`` stream writer used to deliver the response.
+        content_type (str): MIME type of the response body.
+        content (str, optional): Body data to transmit after the header.
+
+    Returns:
+        None
+    """
 
     writer.write(encode_utf8(f"HTTP/1.1 200 OK\nContent-Type: {content_type}\n\n"))
     if content:
@@ -388,14 +474,35 @@ async def send_response(writer, content_type, content=None):
 
 
 async def handle_post_request(writer, request_body, requested_path):
-    """Handle post request"""
+    """Handle an HTTP POST request and send a response.
+
+    Args:
+        writer: ``uasyncio`` stream writer used to send the response.
+        request_body (str): Body of the HTTP request.
+        requested_path (str): Path portion of the HTTP request line.
+
+    Returns:
+        None
+    """
 
     response_content = await handle_post(request_body, requested_path)
     await send_response(writer, "text/html", response_content)
 
 
 async def handle_client(reader, writer):
-    """Handle client"""
+    """Serve a single HTTP client connection.
+
+    The function parses the incoming request, dispatches it to the appropriate
+    handler and manages connection cleanup. Certain POST requests may trigger a
+    reset of the device once the response has been delivered.
+
+    Args:
+        reader: ``uasyncio`` stream reader for incoming data.
+        writer: ``uasyncio`` stream writer for outgoing data.
+
+    Returns:
+        None
+    """
 
     reset_pico = False
 
@@ -477,7 +584,12 @@ async def handle_client(reader, writer):
 
 
 async def webserver():
-    """Run a webserver on port 0.0.0.0:80"""
+    """Start the asynchronous webserver on ``0.0.0.0:80``.
+
+    The server listens for HTTP requests, delegates work to
+    :func:`handle_client` and launches a background task to maintain the WiFi
+    connection.
+    """
 
     try:
         print("INFO: --------------------------")
