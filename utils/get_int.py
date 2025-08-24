@@ -2,7 +2,17 @@ from utils.log import log  # logging function
 
 
 def get_int(value, default=0, log_class="Utils", log_function="get_int"):
-    """Return the int value of a given value"""
+    """Convert a value to ``int`` with error handling and logging.
+
+    Args:
+        value: Object that should represent an integer.
+        default (int): Fallback when conversion fails.
+        log_class (str): Name of the calling class/module for log messages.
+        log_function (str): Name of the calling function for log messages.
+
+    Returns:
+        int: Converted integer or ``default`` if conversion fails.
+    """
 
     # Check if default is a valid float
     if not isinstance(default, int):

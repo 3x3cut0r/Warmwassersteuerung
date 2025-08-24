@@ -14,7 +14,7 @@ SHIFT_DATA = 4
 
 
 class I2cLcd(LcdApi):
-    """Implements a HD44780 character LCD connected via PCF8574 on I2C."""
+    """Driver for HD44780 character LCDs accessed through a PCF8574 I²C expander."""
 
     def __init__(self, i2c, i2c_addr, num_lines, num_columns):
         self.i2c = i2c
@@ -38,24 +38,34 @@ class I2cLcd(LcdApi):
         self.hal_write_command(cmd)
 
     def hal_write_init_nibble(self, nibble):
-        """Writes an initialization nibble to the LCD.
-        This particular function is only used during initialization.
+        """Send a high-order nibble during LCD initialization.
+
+        This helper is used only while switching the display into 4‑bit mode.
+
+        Args:
+            nibble (int): Upper four bits to transmit to the LCD.
         """
         byte = ((nibble >> 4) & 0x0F) << SHIFT_DATA
         self.i2c.writeto(self.i2c_addr, bytearray([byte | MASK_E]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte]))
 
     def hal_backlight_on(self):
-        """Allows the hal layer to turn the backlight on."""
+        """Turn the LCD backlight on via the PCF8574 expander."""
         self.i2c.writeto(self.i2c_addr, bytearray([1 << SHIFT_BACKLIGHT]))
 
     def hal_backlight_off(self):
-        """Allows the hal layer to turn the backlight off."""
+        """Turn the LCD backlight off via the PCF8574 expander."""
         self.i2c.writeto(self.i2c_addr, bytearray([0]))
 
     def hal_write_command(self, cmd):
-        """Writes a command to the LCD.
-        Data is latched on the falling edge of E.
+        """Send a command byte to the LCD controller.
+
+        The data is latched on the falling edge of the enable line. For
+        ``cmd`` values ``<= 3`` an additional delay is inserted to satisfy the
+        controller's timing requirements for *home* and *clear* commands.
+
+        Args:
+            cmd (int): Command byte to transmit.
         """
         byte = (self.backlight << SHIFT_BACKLIGHT) | (((cmd >> 4) & 0x0F) << SHIFT_DATA)
         self.i2c.writeto(self.i2c_addr, bytearray([byte | MASK_E]))
@@ -68,7 +78,11 @@ class I2cLcd(LcdApi):
             sleep_ms(5)
 
     def hal_write_data(self, data):
-        """Write data to the LCD."""
+        """Transmit a data byte to be displayed by the LCD.
+
+        Args:
+            data (int): Character code to write to the display.
+        """
         byte = (
             MASK_RS
             | (self.backlight << SHIFT_BACKLIGHT)

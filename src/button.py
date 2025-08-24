@@ -5,7 +5,13 @@ from src.rlock import Rlock  # re-entrant asyncio.Lock()
 
 
 class Button:
-    """Manage a GPIO connected Button. (Singleton per PIN)"""
+    """Represent a physical push button attached to a GPIO pin.
+
+    Each button instance corresponds to a single pin and is stored in a
+    registry so multiple parts of the program referencing the same pin share the
+    same object.  The class tracks how many buttons have been created to derive a
+    postfix used by the configuration system.
+    """
 
     _instances = {}
     count = 0
@@ -22,15 +28,17 @@ class Button:
         return instance
 
     async def initialize(self, pin_number):
-        """
-        Initialize the Button with a specific pin number.
-        If a button with the given pin already exists, return that instance.
+        """Set up the button on the given GPIO pin.
+
+        If an instance for ``pin_number`` already exists it is reused.  The pin
+        is configured as input with a pull-up resistor and the activation state
+        is read from the configuration.
 
         Args:
-            pin_number (int): The buttons GPIO pin number.
+            pin_number (int): GPIO pin number to which the button is connected.
 
         Returns:
-            self: A Button() object.
+            Button | None: The initialized instance or ``None`` on failure.
         """
 
         if not pin_number or int(pin_number) == 0:
@@ -70,7 +78,11 @@ class Button:
             return None
 
     def is_pressed(self):
-        """Return True if the button is pressed"""
+        """Check whether the button is currently pressed.
+
+        Returns:
+            bool: ``True`` when the button is active and the pin reads low.
+        """
 
         if self.is_activated:
             log("VERBOSE", f"Button.is_pressed()")

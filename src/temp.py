@@ -9,7 +9,7 @@ from src.rlock import Rlock  # re-entrant asyncio.Lock()
 
 
 class TempSensor:
-    """Manage a temperature sensor. (Singleton per PIN)"""
+    """Abstraction for temperature sensors with per-pin singleton behavior."""
 
     _instances = {}
     count = 0
@@ -35,9 +35,18 @@ class TempSensor:
         return instance
 
     async def initialize(self, pin_number, resolution=11, type="ds18x20"):
-        """
-        Initialize the Temperature Sensor with a specific pin and resolution.
-        If a sensor with the given pin already exists, return that instance.
+        """Initialize the sensor on ``pin_number`` with a given resolution.
+
+        If a sensor for the pin already exists the existing instance is
+        returned. Supported ``type`` values are ``"ds18x20"`` and ``"dht11"``.
+
+        Args:
+            pin_number (int): GPIO pin the sensor is connected to.
+            resolution (int): Desired resolution for DS18X20 sensors.
+            type (str): Sensor type identifier.
+
+        Returns:
+            TempSensor | None: Initialized instance or ``None`` on error.
         """
 
         if not pin_number or int(pin_number) == 0:
@@ -102,7 +111,7 @@ class TempSensor:
             return None
 
     def set_resolution(self, resolution=11):
-        """Set the resolution for the sensor."""
+        """Set the measurement resolution for DS18X20 sensors."""
 
         try:
             # Limits the resolution to valid values
@@ -141,7 +150,11 @@ class TempSensor:
             )
 
     async def get_temp(self):
-        """Read temperature from the sensor."""
+        """Read the temperature value from the sensor.
+
+        Returns:
+            float: Temperature in degrees Celsius or ``-127.0`` on failure.
+        """
 
         async with self.lock:
             try:
@@ -178,7 +191,11 @@ class TempSensor:
                 return -127.0
 
     async def get_humidity(self):
-        """Read humidity from the sensor."""
+        """Read the humidity value from the sensor if supported.
+
+        Returns:
+            float: Relative humidity or ``-1`` when unavailable or on error.
+        """
 
         async with self.lock:
             try:

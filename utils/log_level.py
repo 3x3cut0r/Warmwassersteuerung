@@ -2,7 +2,7 @@ LOG_LEVELS = {"OFF": 0, "ERROR": 1, "WARN": 2, "INFO": 3, "VERBOSE": 4}
 
 
 class LogLevel:
-    """LogLevel from config. (Singleton)"""
+    """Singleton that stores and updates the current log level."""
 
     _instance = None
 
@@ -17,7 +17,7 @@ class LogLevel:
             self.initialized = False
 
     def initialize(self, level):
-        """Initialize the LogLevel"""
+        """Initialize the log level from a configuration value."""
 
         if self.initialized:
             print(f"WARN: LogLevel.initialize(): already initialized")
@@ -36,9 +36,13 @@ class LogLevel:
             print(f"ERROR: LogLevel.initialize({level}): failed: {e}")
 
     def get(self):
+        """Return the currently configured log level."""
+
         return self.level
 
     def set(self, level):
+        """Change the log level if ``level`` is valid."""
+
         try:
             if str(level).upper() in LOG_LEVELS:
                 self.level = str(level).upper()

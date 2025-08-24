@@ -2,7 +2,20 @@ from utils.log import log  # logging function
 
 
 def get_bool(value, log_class="Utils", log_function="get_bool"):
-    """Return the bool value of a given value"""
+    """Interpret ``value`` as boolean.
+
+    Strings and integers are mapped to ``True`` or ``False`` using common
+    textual representations (e.g. ``"yes"``/``"no"``). Errors or unsupported
+    types result in ``False`` and are logged.
+
+    Args:
+        value: Value to interpret.
+        log_class (str): Name of the calling class/module for log messages.
+        log_function (str): Name of the calling function for log messages.
+
+    Returns:
+        bool: Boolean interpretation of ``value``.
+    """
 
     try:
         if isinstance(value, bool):
