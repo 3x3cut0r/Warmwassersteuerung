@@ -21,6 +21,7 @@ function RemoveProjectFiles {
     python -m mpremote connect $port rm :web_error.log
 
     python -m mpremote connect $port rm :utils/get_bool.py
+    python -m mpremote connect $port rm :utils/error_logger.py
     python -m mpremote connect $port rm :utils/get_float.py
     python -m mpremote connect $port rm :utils/get_int.py
     python -m mpremote connect $port rm :utils/log_level.py
@@ -61,6 +62,7 @@ function CopyProjectFiles {
     Write-Host "  Erstelle utils..."
     python -m mpremote connect $port mkdir utils
     python -m mpremote connect $port cp ./utils/get_bool.py :utils/get_bool.py
+    python -m mpremote connect $port cp ./utils/error_logger.py :utils/error_logger.py
     python -m mpremote connect $port cp ./utils/get_float.py :utils/get_float.py
     python -m mpremote connect $port cp ./utils/get_int.py :utils/get_int.py
     python -m mpremote connect $port cp ./utils/log.py :utils/log.py

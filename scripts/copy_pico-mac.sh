@@ -32,6 +32,7 @@ ampy --port $PORT put web_error.log web_error.log 2>/dev/null
 echo "  mkdir utils..."
 ampy --port $PORT mkdir utils 2>/dev/null
 ampy --port $PORT put utils/get_bool.py utils/get_bool.py 2>/dev/null
+ampy --port $PORT put utils/error_logger.py utils/error_logger.py 2>/dev/null
 ampy --port $PORT put utils/get_float.py utils/get_float.py 2>/dev/null
 ampy --port $PORT put utils/get_int.py utils/get_int.py 2>/dev/null
 ampy --port $PORT put utils/log.py utils/log.py 2>/dev/null
