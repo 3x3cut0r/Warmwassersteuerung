@@ -66,6 +66,16 @@ eine Weboberfläche auf **Port 80** bereit (z. B. `http://<pico-ip>/`):
 
 ## Änderungshistorie
 
+### v1.1.3
+
+- Fix: `utils/error_logger.py` wird nun von allen Kopierskripten auf das Gerät kopiert (fehlte zuvor und führte zu einem `ImportError` beim Start)
+- Fix: Die konfigurierte Sensorauflösung wird nun korrekt gesetzt (`set_resolution()` überschrieb sie zuvor immer mit dem Standardwert 11)
+- Fix: `Config.get_bool()` berücksichtigt nun den `default`-Parameter
+- Fix: Fehlende Keys (`TEMP_SENSOR_TYPE`, `TEMP_SENSOR_2_TYPE`, `TEMP_SENSOR_2_RESOLUTION_BIT`) in den Config-Vorlagen unter `configs/` ergänzt
+- Neu: `AGENTS.md` mit Richtlinien für AI-Coding-Agenten
+- Verbesserung: `.gitignore` auf das Projekt zugeschnitten (Python/MicroPython statt generischem NodeJS/Java-Template)
+- Verbesserung: README korrigiert und ergänzt (u. a. Voraussetzungen, Weboberfläche, falscher Windows-Skriptname)
+
 ### v1.1.2
 
 - Neu: Fehler-Logger mit getrennten Logdateien für main und Webserver
