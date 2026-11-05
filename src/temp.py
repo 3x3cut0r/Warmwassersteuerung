@@ -87,7 +87,7 @@ class TempSensor:
                         return self
 
                     self.resolution_time = int(750 / (2 ** (12 - self.resolution)))
-                    self.set_resolution()
+                    self.set_resolution(self.resolution)
                     TempSensor._instances[pin_number] = self
                     TempSensor.count += 1
                     self.count = TempSensor.count
