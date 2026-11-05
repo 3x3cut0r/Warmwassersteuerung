@@ -1,17 +1,31 @@
 # Warmwassersteuerung
 
-**Dieses Projekt ist für einen Raspberry Pi Pico W zur automatischen Regulierung der Temperatur eines Wasserbeulers durch Relais.**
+**Dieses Projekt ist für einen Raspberry Pi Pico W zur automatischen Regulierung der Temperatur eines Wasserbehälters durch Relais.**
 
 ## Projektbeschreibung
 
-Die Relais regeln, je nach eingestellter Soll-Temperatur, durch öffnen oder schließen der Kaltwasserzufuhr die Temperatur des Wasserbeulers.
+Die Relais regeln, je nach eingestellter Soll-Temperatur, durch Öffnen oder Schließen der Kaltwasserzufuhr die Temperatur des Wasserbehälters.
+
+Komponenten:
+
+- 2 Relais (Ventil öffnen / schließen)
+- 2 Temperatursensoren (DS18B20 oder DHT11)
+- 4-zeiliges I²C-LCD (PCF8574)
+- Onboard-LED
+- Asynchrone Weboberfläche zur Konfiguration und manuellen Steuerung
+
+## Voraussetzungen
+
+- Raspberry Pi Pico W mit **MicroPython**-Firmware (inkl. der Module `onewire`, `ds18x20`, `dht`, `uasyncio`)
+- [ampy](https://github.com/scientifichackers/ampy) (Adafruit MicroPython Tool) zum Kopieren der Dateien
+- Micro-USB-Kabel
 
 ## Live Demo auf wokwi.com
 
 [Pico W](https://wokwi.com/projects/383802859950189569)
 
-[Arduino Uno (depricated)](https://wokwi.com/projects/346219906817065556)  
-[ESP32-S3 (depricated)](https://wokwi.com/projects/391176792254662657)
+[Arduino Uno (deprecated)](https://wokwi.com/projects/346219906817065556)  
+[ESP32-S3 (deprecated)](https://wokwi.com/projects/391176792254662657)
 
 ## Kopiere das Projekt auf den Pico
 
@@ -19,6 +33,7 @@ Die Relais regeln, je nach eingestellter Soll-Temperatur, durch öffnen oder sch
 # Erstelle die config.json
 cp config.example.json config.json
 # Passe die config.json nach deinen Wünschen an
+# (Pin-Vorlagen für verschiedene Boards liegen unter configs/)
 
 # Kopiere das Projekt auf den Pico:
 
@@ -26,7 +41,7 @@ cp config.example.json config.json
 ./scripts/copy_pico-mac.sh /dev/cu.usbmodem11301
 
 # Windows
-./scripts/copy_pico-win.sh COM3
+scripts\copy_pico-win.cmd COM3
 ```
 
 ## Starte das Projekt auf dem Pico (für debugging Zwecke, um Lognachrichten zu sehen)
@@ -38,6 +53,16 @@ ampy --port /dev/cu.usbmodem11301 run main.py
 # Windows
 ampy --port COM3 run main.py
 ```
+
+## Weboberfläche
+
+Nach dem Start verbindet sich der Pico W mit dem konfigurierten WLAN und stellt
+eine Weboberfläche auf **Port 80** bereit (z. B. `http://<pico-ip>/`):
+
+- Anzeige von Ist-Temperatur, Soll-Temperatur, Timer und LCD-Inhalt
+- Ändern der Konfiguration (`/config/save`)
+- Manuelles Öffnen (`/relay/open`) und Schließen (`/relay/close`) der Relais
+- Zurücksetzen des Geräts (`/machine/reset`)
 
 ## Änderungshistorie
 
@@ -56,14 +81,14 @@ ampy --port COM3 run main.py
 
 ### v1.1.0
 
-- Neu: komplettes Redisign der Basiskomponenten:
+- Neu: komplettes Redesign der Basiskomponenten:
   - alle Komponenten sind jetzt Klassen, die meisten von ihnen Singletons oder Singletons pro PIN
   - kritische Klassen haben jetzt eine Sperre (Rlock), um den Zugriff von verschiedenen Threads gleichzeitig zu schützen
   - Es wurden mehr try/except-Blöcke eingebaut um mehr Fehler abzufangen
   - die meisten Funktionen sind nun asynchron
 - Neu: `config.json` muss nun aus der `config.example.json` manuell vor dem Kopieren erstellt werden
   <br><br>
-- Fix: Wlan Verbindung wird nun schneller aufgebaut
+- Fix: WLAN-Verbindung wird nun schneller aufgebaut
 - Fix: Das Abrufen der `index.html` ist nun deutlich performanter
 - Fix: Die `index.html` zeigt nun wieder die Buttons an und die Standardwerte wurden korrigiert
   <br><br>
