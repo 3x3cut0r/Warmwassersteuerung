@@ -88,9 +88,17 @@ class Config:
             return self.config.get(key, default)
 
     async def get_bool(self, key, default=False):
-        """Return the configuration value for ``key`` as a boolean."""
+        """Return the configuration value for ``key`` as a boolean.
+
+        Args:
+            key (str): Configuration key.
+            default (bool): Fallback when the key is not present.
+
+        Returns:
+            bool: Boolean interpretation of the value or ``default``.
+        """
         async with self.lock:
-            return get_bool(self.config.get(key), "Config", "get_bool")
+            return get_bool(self.config.get(key, default), "Config", "get_bool")
 
     async def get_int(self, key, default=0):
         """Return the configuration value for ``key`` as an integer."""
